@@ -1,0 +1,35 @@
+{
+	"TELEGRAM_BOT_TOKEN": "000000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	"TWITTER_CONSUMER_KEY": "AAAAaaaAAAAAA",
+	"TWITTER_CONSUMER_SECRET": "BBBBBBBBBBBbbbbbbbbbbBBBBBBBBBBBBBBBBBBB",
+	"CUSTOM_IMG_VIEWER_SERVICE": "__LINK__ заменяется на ссылку поста. __HEADERS__ заменяется на HTTP-заголовок \"Referer\" со значением равным \"http://pixiv.net\" в случае Пиксива и на адрес поста в случае anime.reactor.cc",
+	"ADMIN_TELEGRAM_DATA": {
+		"id": 123456789000000000000,
+		"username": "admin_username"
+	},
+	"CHATS_LIST": [
+		{
+			"id": -123456789000000000000,
+			"name": "TEST CHAT",
+			"enabled": true
+		},
+		{
+			"id": -123456789000000000001,
+			"name": "MAIN CHAT",
+			"enabled": false
+		},
+		{
+			"id": -123456789000000000002,
+			"name": "OTHER CHAT",
+			"enabled": false
+		}
+	],
+	"COMMANDS_WHITELIST": [
+		"user1",
+		"user2",
+		"user3 и т.д."
+	],
+	"PROXY_URL": "(Необходимо только при опции запуска 'DEV' или на Windows)",
+	"EMPTY_QUERY_IMG": "https://yourservice.io/spoiler_inline_empty.png",
+	"DONE_QUERY_IMG": "https://yourservice.io/spoiler_inline_filled.png"
+}
