@@ -25,6 +25,8 @@ const
  * @property {{id: number, username: string}} ADMIN_TELEGRAM_DATA
  * @property {Array.<{id: number, name?: string, enabled: boolean}>} CHATS_LIST
  * @property {String[]} COMMANDS_WHITELIST
+ * @property {String[]} MARKS_WHITELIST
+ * @property {String[]} BLACKLIST
  * @property {String} PROXY_URL
  */
 /** @type {ConfigFile} */
@@ -34,9 +36,16 @@ const
 	ADMIN_TELEGRAM_DATA = CONFIG.ADMIN_TELEGRAM_DATA,
 	CHATS_LIST = CONFIG.CHATS_LIST,
 	COMMANDS_WHITELIST = CONFIG.COMMANDS_WHITELIST,
+	MARKS_WHITELIST = CONFIG.MARKS_WHITELIST,
+	BLACKLIST = CONFIG.BLACKLIST,
 	COMMANDS_USAGE = new Object(),
 	COMMANDS = {
 		"help": `Что я умею?
+	
+• Скрывать спойлеры командой /spoiler (смотри команду /aboutspoiler@animeultrabot).
+• Обрабатывать ссылки на ресурсы (смотри команды /aboutpicker@animeultrabot и /pickerlist@animeultrabot).
+• Приветствовать новых пользователей.`,
+		"start": `Я бот для групп. Что я умею?
 	
 • Скрывать спойлеры командой /spoiler (смотри команду /aboutspoiler@animeultrabot).
 • Обрабатывать ссылки на ресурсы (смотри команды /aboutpicker@animeultrabot и /pickerlist@animeultrabot).
@@ -56,7 +65,6 @@ const
 		"pickerlist": `
 • Твит (изображения, гифки и видео)
 • Иллюстрация или манга в Pixiv (изображения)
-• Пост в Instagram (изображения и видео)
 • Пост на Reddit (изображения и гифки)
 • Пост на Danbooru (изображения)
 • Пост на Gelbooru (изображения)
@@ -96,7 +104,6 @@ if (DEV) {
 const
 	telegram = new Telegram(TELEGRAM_BOT_TOKEN, telegramConnectionData),
 	TOB = new Telegraf(TELEGRAM_BOT_TOKEN, { telegram: telegramConnectionData });
-
 
 
 /**
@@ -212,10 +219,19 @@ const TelegramSendToAdmin = (message) => {
 	telegram.sendMessage(ADMIN_TELEGRAM_DATA.id, message, {
 		parse_mode: "HTML",
 		disable_notification: true
-	}).then(() => {}, (e) => console.error(e));
+	}).then(L).catch(L);
 };
 
 TelegramSendToAdmin(`Anime Ultra Bot have been spawned at ${new Date().toISOString()} <i>(ISO 8601, UTC)</i>`);
+
+if (!DEV) {
+	CHATS_LIST.forEach((chat) => {
+		telegram.sendMessage(chat.id, `Я <s>родился</s> заспаунился!`, {
+			parse_mode: "HTML",
+			disable_notification: true
+		}).then(L).catch(L);
+	})
+};
 
 const TwitterUser = new TwitterModule({
 	consumer_key: CONFIG.TWITTER_CONSUMER_KEY, // from Twitter
@@ -239,17 +255,48 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 	const {chat, from} = ctx;
 
 
-	if (
-		(chat && chat["type"] === "private") &&
-		(from && from["id"] === ADMIN_TELEGRAM_DATA.id && from["username"] === ADMIN_TELEGRAM_DATA.username)
-	) {
-		return ctx.reply(`<pre><code class="language-json">${JSON.stringify({
-			status: "Everything is OK",
-			message: "You're ADMIN, writing in private",
-			from, chat
-		}, false, "    ")}</code></pre>`, {
-			parse_mode: "HTML"
-		});
+	if (chat && chat["type"] === "private") {
+		const message = ctx["message"];
+		if (!message) return false;
+
+		const text = message["text"];
+		if (!text) return false;
+
+
+
+		if (BLACKLIST.includes(from["username"])) return false;
+
+
+
+		if (from["username"] === ADMIN_TELEGRAM_DATA.username) {
+			if (text.match(/^\/god (0|1)$/i)) {
+				let mode = text.match(/^\/god (0|1)$/i)[1];
+				godModeEnabled = (mode === "1");
+
+				TelegramSendToAdmin(JSON.stringify({ godModeEnabled }, false, "\t"));
+				return false;
+			};
+		};
+
+
+
+		let commandMatch = text.match(/^\/([\w]+)(\@animeultrabot)?$/i);
+
+		if (commandMatch && commandMatch[1]) {
+			telegram.deleteMessage(chat.id, message.message_id).then(L).catch(L);
+
+			L({commandMatch});
+
+			if (typeof COMMANDS[commandMatch[1]] == "string")
+				return ctx.reply(COMMANDS[commandMatch[1]], {
+					disable_web_page_preview: true,
+					parse_mode: "HTML"
+				}).then(L).catch(L);
+			else if (typeof COMMANDS[commandMatch[1]] == "function")
+				return COMMANDS[commandMatch[1]](ctx);
+		};
+
+		return false;
 	};
 
 
@@ -323,9 +370,12 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 });
 
 TOB.on("photo", /** @param {TelegramContext} ctx */ (ctx) => {
-	const {message} = ctx;
+	const {message, from} = ctx;
 
 	if (message.caption && message.photo) {
+		if (BLACKLIST.includes(from["username"])) return false;
+
+
 		if (/^\/spoiler(\@animeultrabot)?/.test(message.caption)) {
 			L("There is a photo with spoiler-command caption!");
 
@@ -371,7 +421,7 @@ TOB.on("new_chat_members", /** @param {TelegramContext} ctx */ (ctx) => {
 		if (!chatFromList.enabled) return false;
 		if (chatFromList.id !== chat["id"]) return false;
 
-		ctx.reply(`Ну привет, анимечник ${GetUsername(message.from || message.new_chat_member || message.new_chat_members[0])}!\nДай ссылку на себя на ТЖ и, по возможности, на список просмотренного аниме.`, {
+		ctx.reply(`Привет, ${GetUsername(message.from || message.new_chat_member || message.new_chat_members[0])}!\nМожешь кинуть ссылку на TJ и на список аниме?`, {
 			parse_mode: "HTML",
 			disable_web_page_preview: true,
 			reply_to_message_id: message.message_id
@@ -419,6 +469,8 @@ const CheckForCommandAvailability = (from) => {
 	let pass = false;
 	if (from.username && COMMANDS_WHITELIST.includes(from.username))
 		pass = true;
+	else if (from.username && BLACKLIST.includes(from.username))
+		pass = false;
 	else {
 		let lastTimeCalled = COMMANDS_USAGE[from.id];
 			COMMANDS_USAGE[from.id] = Date.now();
@@ -435,52 +487,225 @@ const CheckForCommandAvailability = (from) => {
 
 
 
-
-let currentSessionStamp = new Number();
+/** @type {{[postStamp: string]: {likedBy: string[], dislikedBy: string[]}}} */
+let currentSessionPosts = {},
+	currentSessionStamp = 0;
 
 /**
- * @returns {{[x: string]: string|number|boolean}}
+ * @returns {[{[x: string]: string|number|boolean}]}
  */
-const GlobalSetLikeButton = () => {
-	return Markup.callbackButton("👍", `LIKE_${++currentSessionStamp}_${Date.now()}`);
+const GlobalSetLikeButtons = () => {
+	let currentPostStamp = `${++currentSessionStamp}_${Date.now()}`;
+
+	currentSessionPosts[currentPostStamp] = {
+		likedBy: [],
+		dislikedBy: []
+	};
+
+	return [
+		Markup.callbackButton("👍", `LIKE_${currentPostStamp}`),
+		Markup.callbackButton("👎", `DISLIKE_${currentPostStamp}`)
+	];
+};
+
+let godModeEnabled = false;
+/**
+ * @param {TelegramFromObject} from
+ * @returns {Boolean}
+ */
+const GlobalCheckForGodMode = (from) => {
+	if (!godModeEnabled) return false;
+
+	if (!from) return false;
+	if (!from["username"]) return false;
+
+	if (MARKS_WHITELIST.includes(from["username"])) return true;
+
+	return false;
 };
 
 TOB.action(/^LIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) => {
+	const {match} = ctx;
+	if (!match) return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (0)");
+
+	const postStamp = match[1];
+	if (!postStamp) return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (1)");
+
 	const {update} = ctx;
-	if (!update) return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (1)");
+	if (!update) return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (2)");
 
 	const {callback_query} = update;
-	if (!callback_query) return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (2)");
+	if (!callback_query) return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (3)");
 
 	/** @type {TelegramMessageObject} */
 	const message = callback_query["message"];
 
+	/** @type {TelegramFromObject} */
+	const from = callback_query["from"];
+
+	// if (from["username"] && BLACKLIST.includes(from["username"])) return ctx.answerCbQuery("Порвался?");
+
 	const {chat} = message;
-	if (!chat) return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (3)");
+	if (!chat) return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (4)");
 
 
 	if (message["reply_markup"]) {
 		let initMarkup = message["reply_markup"],
-			likeButtonCount = parseInt(initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 1].text);
+			likeButtonCount = parseInt(initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 2].text),
+			dislikeButtonCount = parseInt(initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 1].text);
 
 		if (isNaN(likeButtonCount)) likeButtonCount = 0;
+		if (isNaN(dislikeButtonCount)) dislikeButtonCount = 0;
 
-		++likeButtonCount;
-		L(message);
+		let messageToShow = "Cпасибо за лайк!";
 
-		initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 1].text = likeButtonCount + " 👍";
+		if (GlobalCheckForGodMode(from)) {
+			--dislikeButtonCount;
+			if (dislikeButtonCount < 0) {
+				dislikeButtonCount = 0;
+				++likeButtonCount;
+			};
+		} else {
+			if (!currentSessionPosts[postStamp] || !currentSessionPosts[postStamp].likedBy || !currentSessionPosts[postStamp].dislikedBy)
+				return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (5)");
+
+
+			let user = from["username"] || from["id"];
+
+			L({user});
+
+			if (currentSessionPosts[postStamp].likedBy.includes(user)) {
+				--likeButtonCount;
+				if (likeButtonCount < 0) likeButtonCount = 0;
+				messageToShow = "Ты убрал лайк 😢";
+				currentSessionPosts[postStamp].likedBy.splice(
+					currentSessionPosts[postStamp].likedBy.indexOf(user),
+					1
+				);
+			} else if (currentSessionPosts[postStamp].dislikedBy.includes(user)) {
+				currentSessionPosts[postStamp].likedBy.push(user);
+				currentSessionPosts[postStamp].dislikedBy.splice(
+					currentSessionPosts[postStamp].dislikedBy.indexOf(user),
+					1
+				);
+
+				--dislikeButtonCount;
+				++likeButtonCount;
+
+				if (dislikeButtonCount < 0) dislikeButtonCount = 0;
+			} else {
+				currentSessionPosts[postStamp].likedBy.push(user);
+				++likeButtonCount;
+			};
+		};
+
+
+		initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 2].text = likeButtonCount + " 👍";
+		initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 1].text = dislikeButtonCount + " 👎";
 
 		telegram.editMessageReplyMarkup(chat.id, message.message_id, null, initMarkup)
 			.then((editedMarkup) => {
 				L(editedMarkup);
-				ctx.answerCbQuery("Cпасибо за лайк!");
+				ctx.answerCbQuery(messageToShow);
 			})
 			.catch((e) => {
 				L(e);
-				ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (4)");
+				ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (6)");
 			});
 	} else
-		return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (5)");
+		return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (7)");
+});
+
+TOB.action(/^DISLIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) => {
+	const {match} = ctx;
+	if (!match) return ctx.answerCbQuery("За дизлайк спасибо, но не засчитаю 😜 (0)");
+
+	const postStamp = match[1];
+	if (!postStamp) return ctx.answerCbQuery("За дизлайк спасибо, но не засчитаю 😜 (1)");
+
+	const {update} = ctx;
+	if (!update) return ctx.answerCbQuery("За дизлайк спасибо, но не засчитаю 😜 (2)");
+
+	const {callback_query} = update;
+	if (!callback_query) return ctx.answerCbQuery("За дизлайк спасибо, но не засчитаю 😜 (3)");
+
+	/** @type {TelegramMessageObject} */
+	const message = callback_query["message"];
+
+	/** @type {TelegramFromObject} */
+	const from = callback_query["from"];
+
+	if (from["username"] && BLACKLIST.includes(from["username"])) return ctx.answerCbQuery("Тебе нельзя ставить минусы");
+
+	const {chat} = message;
+	if (!chat) return ctx.answerCbQuery("За дизлайк спасибо, но не засчитаю 😜 (4)");
+
+
+	if (message["reply_markup"]) {
+		let initMarkup = message["reply_markup"],
+			likeButtonCount = parseInt(initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 2].text),
+			dislikeButtonCount = parseInt(initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 1].text);
+
+		if (isNaN(likeButtonCount)) likeButtonCount = 0;
+		if (isNaN(dislikeButtonCount)) dislikeButtonCount = 0;
+
+		let messageToShow = "Cпасибо за дизлайк!";
+
+		if (GlobalCheckForGodMode(from)) {
+			--likeButtonCount;
+			if (likeButtonCount < 0) {
+				likeButtonCount = 0;
+				++dislikeButtonCount;
+			};
+		} else {
+			if (!currentSessionPosts[postStamp] || !currentSessionPosts[postStamp].likedBy || !currentSessionPosts[postStamp].dislikedBy)
+				return ctx.answerCbQuery("За дизлайк спасибо, но не засчитаю 😜 (5)");
+
+
+			let user = from["username"] || from["id"];
+
+			L({user});
+
+			if (currentSessionPosts[postStamp].dislikedBy.includes(user)) {
+				--dislikeButtonCount;
+				if (dislikeButtonCount < 0) dislikeButtonCount = 0;
+				messageToShow = "Ты убрал дизлайк 😊";
+				currentSessionPosts[postStamp].dislikedBy.splice(
+					currentSessionPosts[postStamp].dislikedBy.indexOf(user),
+					1
+				);
+			} else if (currentSessionPosts[postStamp].likedBy.includes(user)) {
+				currentSessionPosts[postStamp].dislikedBy.push(user);
+				currentSessionPosts[postStamp].likedBy.splice(
+					currentSessionPosts[postStamp].likedBy.indexOf(user),
+					1
+				);
+
+				++dislikeButtonCount;
+				--likeButtonCount;
+				
+				if (likeButtonCount < 0) likeButtonCount = 0;
+			} else {
+				currentSessionPosts[postStamp].dislikedBy.push(user);
+				++dislikeButtonCount;
+			};
+		};
+
+
+		initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 2].text = likeButtonCount + " 👍";
+		initMarkup.inline_keyboard[0][initMarkup.inline_keyboard[0].length - 1].text = dislikeButtonCount + " 👎";
+
+		telegram.editMessageReplyMarkup(chat.id, message.message_id, null, initMarkup)
+			.then((editedMarkup) => {
+				L(editedMarkup);
+				ctx.answerCbQuery(messageToShow);
+			})
+			.catch((e) => {
+				L(e);
+				ctx.answerCbQuery("За дизлайк спасибо, но не засчитаю 😜 (6)");
+			});
+	} else
+		return ctx.answerCbQuery("За дизлайк спасибо, но не засчитаю 😜 (7)");
 });
 
 
@@ -565,6 +790,11 @@ TOB.action(/^SHOW_TEXT_SPOILER_(\d+_\d+)/, (ctx) => {
 		if (indexOfSpoiler > -1) {
 			let spoilerToDisplay = textSpoilersArray[indexOfSpoiler]["text"].toString();
 
+
+			if (spoilerToDisplay.length >= 200)
+				spoilerToDisplay = spoilerToDisplay.slice(0, 196) + "...";
+
+
 			return ctx.answerCbQuery(spoilerToDisplay, true).then(L).catch(L);
 		} else
 			return ctx.answerCbQuery("Спойлер настолько ужасный, что я его потерял 😬. Вот растяпа!", true);
@@ -604,8 +834,10 @@ TOB.action(/^SHOW_IMAGE_SPOILER_([\w\d_]+)/, (ctx) => {
  * @param {TelegramContext} ctx
  */
 const ReplySpoiler = (ctx) => {
-	const {message} = ctx;
+	const {message, from} = ctx;
 	const replyingMessage = message["reply_to_message"];
+
+	if (BLACKLIST.includes(from["username"])) return false;
 
 	if (replyingMessage) {
 		if (replyingMessage["photo"]) {
@@ -699,11 +931,11 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 		url.origin == "https://pbs.twimg.com"
 	)
 		return resolve({ status: true, platform: TwitterImg, url });
-	else if (
-		url.host == "instagram.com" |
-		url.host == "www.instagram.com"
-	)
-		return resolve({ status: true, platform: Instagram, url });
+	// else if (
+	// 	url.host == "instagram.com" |
+	// 	url.host == "www.instagram.com"
+	// )
+	// 	return resolve({ status: true, platform: Instagram, url });
 	else if (
 		url.host == "reddit.com" |
 		url.host == "www.reddit.com"
@@ -770,18 +1002,15 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
  * @returns {void}
  */
 const Twitter = (text, ctx, url) => {
-	let statusIDMatch = text.match(/^(http(s)?\:\/\/)?twitter.com\/[\w\d\_]+\/status(es)?\/(\d+)/),
+	let { pathname } = url,
 		statusID;
 
-	if (!statusIDMatch || !statusIDMatch[4]) {
-		statusIDMatch = text.match(/^(http(s)?\:\/\/)?twitter.com\/statuses\/(\d+)/);
-
-		if (!statusIDMatch || !statusIDMatch[3])
-			return L("No Twitter statusID");
-		else
-			statusID = statusIDMatch[3];
-	} else
-		statusID = statusIDMatch[4];
+	if (pathname.match(/^\/[\w\d\_]+\/status(es)?\/(\d+)/))
+		statusID = pathname.match(/^\/[\w\d\_]+\/status(es)?\/(\d+)/)[2];
+	else if (pathname.match(/^\/statuses\/(\d+)/))
+		statusID = pathname.match(/^\/statuses\/(\d+)/)[1];
+	else if (pathname.match(/^\/i\/web\/status(es)?\/(\d+)/))
+		statusID = pathname.match(/^\/i\/web\/status(es)?\/(\d+)/)[2];
 
 
 	TwitterApp.get("statuses/show", {
@@ -830,7 +1059,34 @@ const Twitter = (text, ctx, url) => {
 				reply_markup: Markup.inlineKeyboard([
 					Markup.urlButton("Твит", text),
 					Markup.urlButton("Автор", "https://twitter.com/" + tweet["user"]["screen_name"]),
-					GlobalSetLikeButton(ctx)
+					...GlobalSetLikeButtons(ctx)
+				])
+			})
+				.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+					L(sentMessage);
+					return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+				})
+				.then(L).catch(L);
+		} else if (MEDIA[0]["type"] === "video") {
+			const variants = MEDIA[0]["video_info"]["variants"].filter(i => (!!i && i.hasOwnProperty("bitrate")));
+
+			if (!variants || !variants.length) return false;
+
+			let best = variants[0];
+
+			variants.forEach((variant) => {
+				if (variant.bitrate > best.bitrate)
+					best = variant;
+			});
+
+			ctx.replyWithVideo(best["url"], {
+				caption: `${caption}\n<a href="${encodeURI(best["url"])}">Исходник видео</a>`,
+				disable_web_page_preview: true,
+				parse_mode: "HTML",
+				reply_markup: Markup.inlineKeyboard([
+					Markup.urlButton("Твит", text),
+					Markup.urlButton("Автор", "https://twitter.com/" + tweet["user"]["screen_name"]),
+					...GlobalSetLikeButtons(ctx)
 				])
 			})
 				.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -864,24 +1120,43 @@ const Twitter = (text, ctx, url) => {
 			else
 				caption += "\nФайлы: " + sourcesArr.map((s, i) => `<a href="${encodeURI(s.media)}">${i + 1}</a>`).join(", ");
 
-			ctx.replyWithMediaGroup(sourcesArr)
-				.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
-					L(sentMessage);
 
-					ctx.reply(caption, {
-						disable_web_page_preview: true,
-						parse_mode: "HTML",
-						reply_to_message_id: sentMessage.message_id,
-						reply_markup: Markup.inlineKeyboard([
-							Markup.urlButton("Твит", text),
-							Markup.urlButton("Автор", "https://twitter.com/" + tweet["user"]["screen_name"]),
-							GlobalSetLikeButton(ctx)
-						])
-					}).then(L).catch(L);
-
-					return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+			if (sourcesArr.length === 1) {
+				ctx.replyWithPhoto(sourcesArr[0].media, {
+					caption,
+					disable_web_page_preview: true,
+					parse_mode: "HTML",
+					reply_markup: Markup.inlineKeyboard([
+						Markup.urlButton("Твит", text),
+						Markup.urlButton("Автор", "https://twitter.com/" + tweet["user"]["screen_name"]),
+						...GlobalSetLikeButtons(ctx)
+					])
 				})
-				.then(L).catch(L);
+					.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+						L(sentMessage);
+						return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+					})
+					.then(L).catch(L);
+			} else {
+				ctx.replyWithMediaGroup(sourcesArr)
+					.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+						L(sentMessage);
+
+						ctx.reply(caption, {
+							disable_web_page_preview: true,
+							parse_mode: "HTML",
+							reply_to_message_id: sentMessage.message_id,
+							reply_markup: Markup.inlineKeyboard([
+								Markup.urlButton("Твит", text),
+								Markup.urlButton("Автор", "https://twitter.com/" + tweet["user"]["screen_name"]),
+								...GlobalSetLikeButtons(ctx)
+							])
+						}).then(L).catch(L);
+
+						return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+					})
+					.then(L).catch(L);
+			};
 		};
 	})
 	.catch((e) => L("Error while getting info from Twitter", e));
@@ -902,7 +1177,7 @@ const TwitterImg = (text, ctx, url) => {
 		parse_mode: "HTML",
 		reply_markup: Markup.inlineKeyboard([
 			Markup.urlButton("Оригинал", `https://pbs.twimg.com${url.pathname}.${format}:orig`),
-			GlobalSetLikeButton(ctx)
+			...GlobalSetLikeButtons(ctx)
 		])
 	})
 		.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -936,7 +1211,7 @@ const Pixiv = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((rawPixivHTML) => {
 		let data;
 
@@ -995,14 +1270,12 @@ const Pixiv = (text, ctx, url) => {
 
 
 
-
-
 		let title = post["title"] || post["illustTitle"] || post["description"] || post["illustComment"],
 			caption = `<i>${TGE(title)}</i>\n\nОтправил – ${GetUsername(ctx.from)}`;
 
+
 		if (sourcesAmount > 10)
 			caption += ` ⬅️ Перейди по ссылке: ${sourcesAmount} ${GetForm(sourcesAmount, ["иллюстрация", "иллюстрации", "иллюстраций"])} не влезли в сообщение`;
-
 
 		if (sourcesAmount === 1)
 			caption += `\n<a href="${CONFIG.CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, encodeURIComponent(sourcesOrig[0].media)).replace(/__HEADERS__/, encodeURIComponent(JSON.stringify({Referer: "http://www.pixiv.net/"})))}">Исходник файла</a>`;
@@ -1010,7 +1283,24 @@ const Pixiv = (text, ctx, url) => {
 			caption += "\nФайлы: " + sourcesOrig.map((s, i) => `<a href="${CONFIG.CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, encodeURIComponent(s.media)).replace(/__HEADERS__/, encodeURIComponent(JSON.stringify({Referer: "http://www.pixiv.net/"})))}">${i + 1}</a>`).join(", ");
 
 
-		ctx.replyWithMediaGroup(sourcesForTG.slice(0, 10))
+		if (sourcesForTG.length === 1) {
+			ctx.replyWithPhoto(sourcesForTG[0].media, {
+				caption,
+				disable_web_page_preview: true,
+				parse_mode: "HTML",
+				reply_markup: Markup.inlineKeyboard([
+					Markup.urlButton("Пост", `https://www.pixiv.net/en/artworks/${pixivID}`),
+					Markup.urlButton("Автор", "https://www.pixiv.net/en/users/" + post["userId"]),
+					...GlobalSetLikeButtons(ctx)
+				])
+			})
+				.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+					L(sentMessage);
+					return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+				})
+				.then(L).catch(L);
+		} else {
+			ctx.replyWithMediaGroup(sourcesForTG.slice(0, 10))
 			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
 				L(sentMessage);
 
@@ -1021,13 +1311,14 @@ const Pixiv = (text, ctx, url) => {
 					reply_markup: Markup.inlineKeyboard([
 						Markup.urlButton("Пост", `https://www.pixiv.net/en/artworks/${pixivID}`),
 						Markup.urlButton("Автор", "https://www.pixiv.net/en/users/" + post["userId"]),
-						GlobalSetLikeButton(ctx)
+						...GlobalSetLikeButtons(ctx)
 					])
 				}).then(L).catch(L);
 
 				return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
 			})
 			.then(L).catch(L);
+		};
 	}).catch(L);
 };
 
@@ -1042,7 +1333,7 @@ const Reddit = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((redditPage) => {
 		let data;
 
@@ -1071,7 +1362,7 @@ const Reddit = (text, ctx, url) => {
 
 
 		if (post["media"]) {
-			media = post["media"];
+			let media = post["media"];
 
 			if (media["type"] === "image") {
 				if (media["content"])
@@ -1091,16 +1382,33 @@ const Reddit = (text, ctx, url) => {
 
 
 		if (!!source.media & !!source.type) {
-			let caption = `<i>${TGE((media["title"] || "").trim())}</i>\n\nОтправил – ${GetUsername(ctx.from)}\nReddit | <a href="${encodeURI(text)}">Пост</a> | <a href="${encodeURI("https://www.reddit.com/user/" + post["author"] + "/")}">/u/${post["author"]}</a>`,
+			let caption = `<i>${TGE((post["title"] || "").trim())}</i>\n<a href="${encodeURI("https://www.reddit.com/user/" + post["author"] + "/")}">/u/${post["author"]}</a>\n\nОтправил – ${GetUsername(ctx.from)}`,
 				callingMethod = (source.type === "photo" ? "replyWithPhoto" : "replyWithAnimation");
+
+
+			try {
+				let pathname = post["permalink"];
+					pathname = URL.parse(pathname).pathname;
+
+				if (pathname) {
+					let match = pathname.match(/^\/(r\/[\w\d\-_]+)\//);
+					if (match) {
+						if (match[1]) {
+							caption = `<i>${TGE((post["title"] || "").trim())}</i>\n<a href="${encodeURI("https://www.reddit.com/" + match[1] + "/")}">${TGE(match[1])}</a>\n\nОтправил – ${GetUsername(ctx.from)}`;
+						};
+					};
+				};
+			} catch (e) {};
+
 
 			ctx[callingMethod](source.media, {
 				caption,
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
+					Markup.urlButton("Пост", encodeURI(text)),
 					Markup.urlButton("Исходник", source.media),
-					GlobalSetLikeButton(ctx)
+					...GlobalSetLikeButtons(ctx)
 				])
 			})
 				.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -1119,86 +1427,82 @@ const Reddit = (text, ctx, url) => {
  * @param {URL} url
  * @returns {void}
  */
-const Instagram = (text, ctx, url) => {
-	NodeFetch(text).then((res) => {
-		if (res.status == 200)
-			return res.text();
-		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
-	}).then((instagramPage) => {
-		let actualInstaPost;
+// const Instagram = (text, ctx, url) => {
+// 	NodeFetch(text).then((res) => {
+// 		if (res.status == 200)
+// 			return res.text();
+// 		else
+// 			return Promise.reject(`Status code = ${res.status}`);
+// 	}).then((instagramPage) => {
+// 		let actualInstaPost;
 
-		try {
-			instagramPage = instagramPage
-							.split("<body")[1]
-							.split(/<(script type="text\/javascript"|script)>window._sharedData\s+=\s+/)
-							.pop().split("</script>")[0].replace(/\;/g, "");
+// 		try {
+// 			instagramPage = instagramPage
+// 							.split("<body")[1]
+// 							.split(/<(script type="text\/javascript"|script)>window._sharedData\s+=\s+/)
+// 							.pop().split("</script>")[0].replace(/\;/g, "");
 
-			if (DEV) fs.writeFileSync("./out/instagram.json", instagramPage);
+// 			if (DEV) fs.writeFileSync("./out/instagram.json", instagramPage);
 
-			actualInstaPost = JSON.parse(instagramPage);
-			actualInstaPost = actualInstaPost.entry_data.PostPage[0].graphql.shortcode_media;
-		} catch (e) {
-			return L("Cannot parse Instagram data", e);
-		};
-
-
-		let title = ((actualInstaPost.edge_media_to_caption.edges[0] || {}).node || {text: ""}).text || "";
-			title = title.replace(/(\s)+/gi, "$1").trim();
+// 			actualInstaPost = JSON.parse(instagramPage);
+// 			actualInstaPost = actualInstaPost.entry_data.PostPage[0].graphql.shortcode_media;
+// 		} catch (e) {
+// 			return L("Cannot parse Instagram data", e);
+// 		};
 
 
-		let sourcesArr = new Array();
+// 		let sourcesArr = new Array();
 
-		if (actualInstaPost["edge_sidecar_to_children"])
-			sourcesArr = actualInstaPost["edge_sidecar_to_children"]["edges"].map((media) => {
-				if (!media["node"]["is_video"])
-					return { media: media["node"]["display_resources"].pop().src, type: "photo" };
-				else
-					return false;
-			}).filter(i => !!i);
-		else {
-			if (!actualInstaPost["is_video"])
-				sourcesArr = [{
-					media: actualInstaPost["display_resources"].pop().src, type: "photo"
-				}];
-			else
-				sourcesArr = [{
-					media: actualInstaPost["video_url"], type: "video"
-				}];
-		};
-
-
-		if (!sourcesArr.length) return L("No sources in Instagram post");
+// 		if (actualInstaPost["edge_sidecar_to_children"])
+// 			sourcesArr = actualInstaPost["edge_sidecar_to_children"]["edges"].map((media) => {
+// 				if (!media["node"]["is_video"])
+// 					return { media: media["node"]["display_resources"].pop().src, type: "photo" };
+// 				else
+// 					return false;
+// 			}).filter(i => !!i);
+// 		else {
+// 			if (!actualInstaPost["is_video"])
+// 				sourcesArr = [{
+// 					media: actualInstaPost["display_resources"].pop().src, type: "photo"
+// 				}];
+// 			else
+// 				sourcesArr = [{
+// 					media: actualInstaPost["video_url"], type: "video"
+// 				}];
+// 		};
 
 
-		let caption = `<i>${TGE(title)}</i>\n\nОтправил – ${GetUsername(ctx.from)}`;
-
-		if (sourcesArr.length === 1)
-			caption += `\n<a href="${encodeURI(sourcesArr[0].media)}">Исходник файла</a>`;
-		else
-			caption += "\nФайлы: " + sourcesArr.map((s, i) => `<a href="${encodeURI(s.media)}">${i + 1}</a>`).join(", ");
+// 		if (!sourcesArr.length) return L("No sources in Instagram post");
 
 
-		ctx.replyWithMediaGroup(sourcesArr)
-			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
-				L(sentMessage);
+// 		let caption = `Отправил – ${GetUsername(ctx.from)}`;
 
-				ctx.reply(caption, {
-					disable_web_page_preview: true,
-					parse_mode: "HTML",
-					reply_to_message_id: sentMessage.message_id,
-					reply_markup: Markup.inlineKeyboard([
-						Markup.urlButton("Пост", text),
-						Markup.urlButton("Автор", "https://instagram.com/" + actualInstaPost["owner"]["username"] + "/"),
-						GlobalSetLikeButton(ctx)
-					])
-				}).then(L).catch(L);
+// 		if (sourcesArr.length === 1)
+// 			caption += `\n<a href="${encodeURI(sourcesArr[0].media)}">Исходник файла</a>`;
+// 		else
+// 			caption += "\nФайлы: " + sourcesArr.map((s, i) => `<a href="${encodeURI(s.media)}">${i + 1}</a>`).join(", ");
 
-				return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
-			})
-			.then(L).catch(L);
-	}).catch(L);
-};
+
+// 		ctx.replyWithMediaGroup(sourcesArr)
+// 			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+// 				L(sentMessage);
+
+// 				ctx.reply(caption, {
+// 					disable_web_page_preview: true,
+// 					parse_mode: "HTML",
+// 					reply_to_message_id: sentMessage.message_id,
+// 					reply_markup: Markup.inlineKeyboard([
+// 						Markup.urlButton("Пост", text),
+// 						Markup.urlButton("Автор", "https://instagram.com/" + actualInstaPost["owner"]["username"] + "/"),
+// 						...GlobalSetLikeButtons(ctx)
+// 					])
+// 				}).then(L).catch(L);
+
+// 				return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+// 			})
+// 			.then(L).catch(L);
+// 	}).catch(L);
+// };
 
 /**
  * @param {String} text
@@ -1213,7 +1517,7 @@ const Danbooru = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((danbooruPage) => {
 		let source = "";
 
@@ -1269,7 +1573,7 @@ const Danbooru = (text, ctx, url) => {
 			parse_mode: "HTML",
 			reply_markup: Markup.inlineKeyboard([
 				Markup.urlButton("Исходник", encodeURI(source)),
-				GlobalSetLikeButton(ctx)
+				...GlobalSetLikeButtons(ctx)
 			])
 		})
 			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -1293,7 +1597,7 @@ const Gelbooru = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((gelbooruPage) => {
 		let source = "";
 
@@ -1329,7 +1633,7 @@ const Gelbooru = (text, ctx, url) => {
 			parse_mode: "HTML",
 			reply_markup: Markup.inlineKeyboard([
 				Markup.urlButton("Исходник", encodeURI(source)),
-				GlobalSetLikeButton(ctx)
+				...GlobalSetLikeButtons(ctx)
 			])
 		})
 			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -1353,7 +1657,7 @@ const Konachan = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((konachanPage) => {
 		let source = "";
 
@@ -1389,7 +1693,7 @@ const Konachan = (text, ctx, url) => {
 			parse_mode: "HTML",
 			reply_markup: Markup.inlineKeyboard([
 				Markup.urlButton("Исходник", encodeURI(source)),
-				GlobalSetLikeButton(ctx)
+				...GlobalSetLikeButtons(ctx)
 			])
 		})
 			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -1413,7 +1717,7 @@ const Yandere = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((yanderePage) => {
 		let source = "";
 
@@ -1450,7 +1754,7 @@ const Yandere = (text, ctx, url) => {
 			reply_markup: Markup.inlineKeyboard([
 				Markup.urlButton("Исходник", encodeURI(source)),
 				Markup.urlButton("Пост", encodeURI(text)),
-				GlobalSetLikeButton(ctx)
+				...GlobalSetLikeButtons(ctx)
 			])
 		})
 			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -1474,7 +1778,7 @@ const Eshuushuu = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((eshuushuuPage) => {
 		let source = "";
 
@@ -1505,7 +1809,7 @@ const Eshuushuu = (text, ctx, url) => {
 					reply_markup: Markup.inlineKeyboard([
 						Markup.urlButton("Исходник", encodeURI(source)),
 						Markup.urlButton("Пост", encodeURI(text)),
-						GlobalSetLikeButton(ctx)
+						...GlobalSetLikeButtons(ctx)
 					])
 				})
 					.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -1531,7 +1835,7 @@ const Sankaku = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((sankakuPage) => {
 		let source = "";
 
@@ -1558,7 +1862,7 @@ const Sankaku = (text, ctx, url) => {
 			reply_markup: Markup.inlineKeyboard([
 				Markup.urlButton("Исходник", encodeURI(source)),
 				Markup.urlButton("Пост", encodeURI(text)),
-				GlobalSetLikeButton(ctx)
+				...GlobalSetLikeButtons(ctx)
 			])
 		})
 			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -1582,7 +1886,7 @@ const Zerochan = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((zerochanPage) => {
 		let source = "";
 
@@ -1622,7 +1926,7 @@ const Zerochan = (text, ctx, url) => {
 			reply_markup: Markup.inlineKeyboard([
 				Markup.urlButton("Исходник", encodeURI(source)),
 				Markup.urlButton("Пост", encodeURI(text)),
-				GlobalSetLikeButton(ctx)
+				...GlobalSetLikeButtons(ctx)
 			])
 		})
 			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -1644,7 +1948,7 @@ const AnimePictures = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((animePicturesPage) => {
 		let source = "";
 
@@ -1685,7 +1989,7 @@ const AnimePictures = (text, ctx, url) => {
 					reply_markup: Markup.inlineKeyboard([
 						Markup.urlButton("Исходник", encodeURI(source)),
 						Markup.urlButton("Пост", encodeURI(text)),
-						GlobalSetLikeButton(ctx)
+						...GlobalSetLikeButtons(ctx)
 					])
 				})
 					.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
@@ -1712,7 +2016,7 @@ const Joyreactor = (text, ctx, url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(`Status code = ${response.statusCode}`);
+			return Promise.reject(`Status code = ${res.status}`);
 	}).then((joyreactorPage) => {
 		let source = "";
 
@@ -1748,7 +2052,7 @@ const Joyreactor = (text, ctx, url) => {
 				reply_markup: Markup.inlineKeyboard([
 					Markup.urlButton("Исходник", encodeURI(CONFIG.CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, source).replace(/__HEADERS__/, JSON.stringify({"Referer": text})))),
 					Markup.urlButton("Пост", encodeURI(text)),
-					GlobalSetLikeButton(ctx)
+					...GlobalSetLikeButtons(ctx)
 				])
 			})
 				.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
