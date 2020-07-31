@@ -89,21 +89,11 @@ const
 	};
 
 
-let telegramConnectionData = {},
-	fetchConnectionAdditionalOptions = {};
-
-
-if (DEV) {
-	const ProxyAgent = require("proxy-agent");
-
-	telegramConnectionData["agent"] = new ProxyAgent(CONFIG.PROXY_URL);
-	fetchConnectionAdditionalOptions = new ProxyAgent(CONFIG.PROXY_URL);
-};
 
 
 const
-	telegram = new Telegram(TELEGRAM_BOT_TOKEN, telegramConnectionData),
-	TOB = new Telegraf(TELEGRAM_BOT_TOKEN, { telegram: telegramConnectionData });
+	telegram = new Telegram(TELEGRAM_BOT_TOKEN),
+	TOB = new Telegraf(TELEGRAM_BOT_TOKEN);
 
 
 /**
@@ -200,14 +190,18 @@ const TGE = iStr => {
  */
 /**
  * @param {TelegramFromObject} from
+ * @param {String} [prefix]
  */
-const GetUsername = (from) => {
+const GetUsername = (from, prefix = "") => {
+	if (from.username === ADMIN_TELEGRAM_DATA.username) return TGE("Почтой России");
+
+
 	if (from.username)
-		return `<a href="https://t.me/${from.username}">${TGE(from.first_name)}${from.last_name ? " " + TGE(from.last_name) : ""}</a>`;
+		return `${TGE(prefix)}<a href="https://t.me/${from.username}">${TGE(from.first_name)}${from.last_name ? " " + TGE(from.last_name) : ""}</a>`;
 	else if (from.last_name)
-		return TGE(from.first_name + " " + from.last_name);
+		return TGE(prefix + from.first_name + " " + from.last_name);
 	else
-		return TGE(from.first_name);
+		return TGE(prefix + from.first_name);
 };
 
 /**
@@ -222,16 +216,10 @@ const TelegramSendToAdmin = (message) => {
 	}).then(L).catch(L);
 };
 
-TelegramSendToAdmin(`Anime Ultra Bot have been spawned at ${new Date().toISOString()} <i>(ISO 8601, UTC)</i>`);
+if (!DEV)
+	TelegramSendToAdmin(`Anime Ultra Bot have been spawned at ${new Date().toISOString()} <i>(ISO 8601, UTC)</i>`);
 
-if (!DEV) {
-	CHATS_LIST.forEach((chat) => {
-		telegram.sendMessage(chat.id, `Я <s>родился</s> заспаунился!`, {
-			parse_mode: "HTML",
-			disable_notification: true
-		}).then(L).catch(L);
-	})
-};
+
 
 const TwitterUser = new TwitterModule({
 	consumer_key: CONFIG.TWITTER_CONSUMER_KEY, // from Twitter
@@ -339,21 +327,21 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 
 
-		/*
-			if (/жаль([\.\?\!…]*)$/i.test(text.trim())) {
-				if (CheckForCommandAvailability(from)) {
-					if (Math.random() < 0.5)
-						return ctx.reply("<i>…как Орлов, порхай как бабочка!</i>", {
-							parse_mode: "HTML",
-							reply_to_message_id: message.message_id
-						}).then(L).catch(L);
-					else
-						return ctx.replyWithSticker("CAACAgIAAx0CU5r_5QACCFlejL-ACp0b5UFZppv4rFVWZ9lZGwAChQYAAiMhBQABqCwuoKvunScYBA", {
-							reply_to_message_id: message.message_id
-						}).then(L).catch(L);
-				};
+
+		if (/жаль([\.\?\!…]*)$/i.test(text.trim())) {
+			if (CheckForCommandAvailability(from)) {
+				if (Math.random() < 0.5)
+					return ctx.reply("<i>…как Орлов, порхай как бабочка!</i>", {
+						parse_mode: "HTML",
+						reply_to_message_id: message.message_id
+					}).then(L).catch(L);
+				else
+					return ctx.replyWithSticker("CAACAgIAAx0CU5r_5QACCFlejL-ACp0b5UFZppv4rFVWZ9lZGwAChQYAAiMhBQABqCwuoKvunScYBA", {
+						reply_to_message_id: message.message_id
+					}).then(L).catch(L);
 			};
-		*/
+		};
+
 
 
 
@@ -394,7 +382,7 @@ TOB.on("photo", /** @param {TelegramContext} ctx */ (ctx) => {
 
 			if (!bestPhoto) return L("No file_id in PhotoSize type's object");
 
-			ctx.reply(`Спойлер отправил – ${GetUsername(message.from)}`, {
+			ctx.reply(`Спойлер отправил ${GetUsername(message.from, "– ")}`, {
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
@@ -567,8 +555,10 @@ TOB.action(/^LIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) => {
 			};
 		} else {
 			if (!currentSessionPosts[postStamp] || !currentSessionPosts[postStamp].likedBy || !currentSessionPosts[postStamp].dislikedBy)
-				return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (5)");
-
+				currentSessionPosts[postStamp] = {
+					likedBy: [],
+					dislikedBy: []
+				};
 
 			let user = from["username"] || from["id"];
 
@@ -659,7 +649,10 @@ TOB.action(/^DISLIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) => {
 			};
 		} else {
 			if (!currentSessionPosts[postStamp] || !currentSessionPosts[postStamp].likedBy || !currentSessionPosts[postStamp].dislikedBy)
-				return ctx.answerCbQuery("За дизлайк спасибо, но не засчитаю 😜 (5)");
+				currentSessionPosts[postStamp] = {
+					likedBy: [],
+					dislikedBy: []
+				};
 
 
 			let user = from["username"] || from["id"];
@@ -849,7 +842,7 @@ const ReplySpoiler = (ctx) => {
 
 			if (!bestPhoto) return L("No file_id in PhotoSize type's object");
 
-			ctx.reply(`Спойлер отправил – ${GetUsername(replyingMessage.from)}, сообщил – ${GetUsername(message.from)}`, {
+			ctx.reply(`Спойлер отправил ${GetUsername(replyingMessage.from, "– ")}, сообщил ${GetUsername(message.from, "– ")}`, {
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
@@ -865,7 +858,7 @@ const ReplySpoiler = (ctx) => {
 
 			let remarked = spoilerText.replace(/([^\s!?\.])/g, "█");
 
-			ctx.reply(`${remarked.slice(0, 20)}\n\nСпойлер отправил – ${GetUsername(replyingMessage.from)}, сообщил – ${GetUsername(message.from)}`, {
+			ctx.reply(`${remarked.slice(0, 20)}\n\nСпойлер отправил ${GetUsername(replyingMessage.from, "– ")}, сообщил${GetUsername(message.from, " – ")}`, {
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
@@ -883,7 +876,7 @@ const ReplySpoiler = (ctx) => {
 		if (spoilerText.length) {
 			let remarked = spoilerText.replace(/([^\s!?\.])/g, "█");
 
-			ctx.reply(`${remarked.slice(0, 20)}\n\nСпойлер отправил – ${GetUsername(message.from)}`, {
+			ctx.reply(`${remarked.slice(0, 20)}\n\nСпойлер отправил ${GetUsername(message.from, "– ")}`, {
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
@@ -1036,7 +1029,7 @@ const Twitter = (text, ctx, url) => {
 												.replace(/(\s)+/gi, "$1")
 												.trim();
 
-		let caption = `<i>${TGE(sendingMessageText)}</i>\n\nОтправил – ${GetUsername(ctx.from)}`;
+		let caption = `<i>${TGE(sendingMessageText)}</i>\n\nОтправил ${GetUsername(ctx.from, "– ")}`;
 
 
 
@@ -1172,7 +1165,7 @@ const TwitterImg = (text, ctx, url) => {
 	let format = GlobalParseQuery(url.query)["format"] || "jpg";
 
 	ctx.replyWithPhoto(`https://pbs.twimg.com${url.pathname}.${format}:orig`, {
-		caption: `Отправил – ${GetUsername(ctx.from)}`,
+		caption: `Отправил ${GetUsername(ctx.from, "– ")}`,
 		disable_web_page_preview: true,
 		parse_mode: "HTML",
 		reply_markup: Markup.inlineKeyboard([
@@ -1271,7 +1264,7 @@ const Pixiv = (text, ctx, url) => {
 
 
 		let title = post["title"] || post["illustTitle"] || post["description"] || post["illustComment"],
-			caption = `<i>${TGE(title)}</i>\n\nОтправил – ${GetUsername(ctx.from)}`;
+			caption = `<i>${TGE(title)}</i>\n\nОтправил ${GetUsername(ctx.from, "– ")}`;
 
 
 		if (sourcesAmount > 10)
@@ -1382,7 +1375,7 @@ const Reddit = (text, ctx, url) => {
 
 
 		if (!!source.media & !!source.type) {
-			let caption = `<i>${TGE((post["title"] || "").trim())}</i>\n<a href="${encodeURI("https://www.reddit.com/user/" + post["author"] + "/")}">/u/${post["author"]}</a>\n\nОтправил – ${GetUsername(ctx.from)}`,
+			let caption = `<i>${TGE((post["title"] || "").trim())}</i>\n<a href="${encodeURI("https://www.reddit.com/user/" + post["author"] + "/")}">/u/${post["author"]}</a>\n\nОтправил ${GetUsername(ctx.from, "– ")}`,
 				callingMethod = (source.type === "photo" ? "replyWithPhoto" : "replyWithAnimation");
 
 
@@ -1394,7 +1387,7 @@ const Reddit = (text, ctx, url) => {
 					let match = pathname.match(/^\/(r\/[\w\d\-_]+)\//);
 					if (match) {
 						if (match[1]) {
-							caption = `<i>${TGE((post["title"] || "").trim())}</i>\n<a href="${encodeURI("https://www.reddit.com/" + match[1] + "/")}">${TGE(match[1])}</a>\n\nОтправил – ${GetUsername(ctx.from)}`;
+							caption = `<i>${TGE((post["title"] || "").trim())}</i>\n<a href="${encodeURI("https://www.reddit.com/" + match[1] + "/")}">${TGE(match[1])}</a>\n\nОтправил ${GetUsername(ctx.from, "– ")}`;
 						};
 					};
 				};
@@ -1475,7 +1468,7 @@ const Reddit = (text, ctx, url) => {
 // 		if (!sourcesArr.length) return L("No sources in Instagram post");
 
 
-// 		let caption = `Отправил – ${GetUsername(ctx.from)}`;
+// 		let caption = `Отправил ${GetUsername(ctx.from, "– ")}`;
 
 // 		if (sourcesArr.length === 1)
 // 			caption += `\n<a href="${encodeURI(sourcesArr[0].media)}">Исходник файла</a>`;
@@ -1511,9 +1504,7 @@ const Reddit = (text, ctx, url) => {
  * @returns {void}
  */
 const Danbooru = (text, ctx, url) => {
-	NodeFetch(text, {
-		agent: fetchConnectionAdditionalOptions
-	}).then((res) => {
+	NodeFetch(text).then((res) => {
 		if (res.status == 200)
 			return res.text();
 		else
@@ -1552,7 +1543,7 @@ const Danbooru = (text, ctx, url) => {
 		source = "https://danbooru.donmai.us/data/" + sourceUUID + extension;
 
 
-		let caption = `Отправил – ${GetUsername(ctx.from)}\nDanbooru | <a href="${encodeURI(text)}">Ссылка на пост</a>`;
+		let caption = `Отправил ${GetUsername(ctx.from, "– ")}\nDanbooru | <a href="${encodeURI(text)}">Ссылка на пост</a>`;
 			author = "";
 
 		try {
@@ -1591,9 +1582,7 @@ const Danbooru = (text, ctx, url) => {
  * @returns {void}
  */
 const Gelbooru = (text, ctx, url) => {
-	NodeFetch(text, {
-		agent: fetchConnectionAdditionalOptions
-	}).then((res) => {
+	NodeFetch(text).then((res) => {
 		if (res.status == 200)
 			return res.text();
 		else
@@ -1613,7 +1602,7 @@ const Gelbooru = (text, ctx, url) => {
 
 		if (!source) return L("No Gelbooru source");
 
-		let caption = `Отправил – ${GetUsername(ctx.from)}\nGelbooru | <a href="${encodeURI(text)}">Ссылка на пост</a>`;
+		let caption = `Отправил ${GetUsername(ctx.from, "– ")}\nGelbooru | <a href="${encodeURI(text)}">Ссылка на пост</a>`;
 			author = "";
 
 		try {
@@ -1651,9 +1640,7 @@ const Gelbooru = (text, ctx, url) => {
  * @returns {void}
  */
 const Konachan = (text, ctx, url) => {
-	NodeFetch(text, {
-		agent: fetchConnectionAdditionalOptions
-	}).then((res) => {
+	NodeFetch(text).then((res) => {
 		if (res.status == 200)
 			return res.text();
 		else
@@ -1673,7 +1660,7 @@ const Konachan = (text, ctx, url) => {
 
 		if (!source) return L("No Konachan source");
 
-		let caption = `Отправил – ${GetUsername(ctx.from)}\nKonachan | <a href="${encodeURI(text)}">Ссылка на пост</a>`;
+		let caption = `Отправил ${GetUsername(ctx.from, "– ")}\nKonachan | <a href="${encodeURI(text)}">Ссылка на пост</a>`;
 			author = "";
 
 		try {
@@ -1711,9 +1698,7 @@ const Konachan = (text, ctx, url) => {
  * @returns {void}
  */
 const Yandere = (text, ctx, url) => {
-	NodeFetch(text, {
-		agent: fetchConnectionAdditionalOptions
-	}).then((res) => {
+	NodeFetch(text).then((res) => {
 		if (res.status == 200)
 			return res.text();
 		else
@@ -1733,7 +1718,7 @@ const Yandere = (text, ctx, url) => {
 
 		if (!source) return L("No Yandere source");
 
-		let caption = `Отправил – ${GetUsername(ctx.from)}`;
+		let caption = `Отправил ${GetUsername(ctx.from, "– ")}`;
 			author = "";
 
 		try {
@@ -1772,9 +1757,7 @@ const Yandere = (text, ctx, url) => {
  * @returns {void}
  */
 const Eshuushuu = (text, ctx, url) => {
-	NodeFetch(text, {
-		agent: fetchConnectionAdditionalOptions
-	}).then((res) => {
+	NodeFetch(text).then((res) => {
 		if (res.status == 200)
 			return res.text();
 		else
@@ -1794,7 +1777,7 @@ const Eshuushuu = (text, ctx, url) => {
 
 		if (!source) return L("No Eshuushuu source");
 
-		let caption = `Отправил – ${GetUsername(ctx.from)}`;
+		let caption = `Отправил ${GetUsername(ctx.from, "– ")}`;
 
 
 		NodeFetch(source)
@@ -1829,9 +1812,7 @@ const Eshuushuu = (text, ctx, url) => {
  * @returns {void}
  */
 const Sankaku = (text, ctx, url) => {
-	NodeFetch(text, {
-		agent: fetchConnectionAdditionalOptions
-	}).then((res) => {
+	NodeFetch(text).then((res) => {
 		if (res.status == 200)
 			return res.text();
 		else
@@ -1852,7 +1833,7 @@ const Sankaku = (text, ctx, url) => {
 		if (!source) return L("No Sankaku source");
 		if (source.slice(0, 6) !== "https:") source = "https:" + source
 
-		let caption = `Отправил – ${GetUsername(ctx.from)}`;
+		let caption = `Отправил ${GetUsername(ctx.from, "– ")}`;
 
 
 		ctx.replyWithPhoto(source, {
@@ -1880,9 +1861,7 @@ const Sankaku = (text, ctx, url) => {
  * @returns {void}
  */
 const Zerochan = (text, ctx, url) => {
-	NodeFetch(text, {
-		agent: fetchConnectionAdditionalOptions
-	}).then((res) => {
+	NodeFetch(text).then((res) => {
 		if (res.status == 200)
 			return res.text();
 		else
@@ -1916,7 +1895,7 @@ const Zerochan = (text, ctx, url) => {
 
 		if (basenameMatch && basenameMatch.pop) source = basenameMatch.pop();
 
-		let caption = `Отправил – ${GetUsername(ctx.from)}`;
+		let caption = `Отправил ${GetUsername(ctx.from, "– ")}`;
 
 
 		ctx.replyWithPhoto(source, {
@@ -1973,7 +1952,7 @@ const AnimePictures = (text, ctx, url) => {
 			L(e);
 		};
 
-		let caption = `Отправил – ${GetUsername(ctx.from)}`;
+		let caption = `Отправил ${GetUsername(ctx.from, "– ")}`;
 
 
 
@@ -2034,7 +2013,7 @@ const Joyreactor = (text, ctx, url) => {
 
 
 
-		let caption = `Отправил – ${GetUsername(ctx.from)}`;
+		let caption = `Отправил ${GetUsername(ctx.from, "– ")}`;
 
 
 		NodeFetch(source, {

@@ -36,7 +36,6 @@
 		"bad_user1",
 		"bad_user2"
 	],
-	"PROXY_URL": "(Необходимо только при аргументе запуска 'DEV' или на Windows)",
 	"EMPTY_QUERY_IMG": "https://yourservice.io/spoiler_inline_empty.png",
 	"DONE_QUERY_IMG": "https://yourservice.io/spoiler_inline_filled.png"
 }

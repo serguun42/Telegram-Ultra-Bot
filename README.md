@@ -51,7 +51,6 @@
 * Telegraf
 * Twitter-lite
 * node-fetch
-* proxy-agent – используется на локалке (винде) для обхода ограничений Рыбнадзора. Указать параметр `PROXY_URL` в конфигурации.
 * [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS) – ровно такой же модуль есть и в этом репозитории (нет в npm/yarn)
 
 #### Полезные ссылки
