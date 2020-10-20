@@ -158,6 +158,7 @@ const TGE = iStr => {
  * @property {TelegramFromObject} from
  * @property {TelegramChatObject} chat
  * @property {Number} date
+ * @property {Array.<{offset: Number, length: Number, type: String}>} [entities]
  * @property {TelegramPhotoObj[]} [photo]
  * @property {TelegramMessageObject} [reply_to_message]
  * @property {{inline_keyboard: Array.<Array.<{text: string, callback_data: string, url: string}>>}} [reply_markup]
@@ -1200,6 +1201,7 @@ const Pixiv = (text, ctx, url) => {
 	if (!pixivID) return;
 
 
+
 	NodeFetch(`https://www.pixiv.net/en/artworks/${pixivID}`).then((res) => {
 		if (res.status == 200)
 			return res.text();
@@ -1207,14 +1209,19 @@ const Pixiv = (text, ctx, url) => {
 			return Promise.reject(`Status code = ${res.status}`);
 	}).then((rawPixivHTML) => {
 		let data;
+		if (DEV) fs.writeFileSync("./out/pixiv-raw.html", rawPixivHTML);
 
 		try {
 			rawPixivHTML = rawPixivHTML
-										.split(/id\=\"meta\-preload\-data\"/i)[1]
+										.split(`id="meta-preload-data"`)[1]
 										.split("</head")[0]
 										.trim()
 										.replace(/^content\=('|")/i, "")
-										.replace(/('|")>$/i, "");
+										.split(/('|")>/)[0]
+										.replace(/('|")>$/i, "")
+										.trim();
+
+			if (DEV) fs.writeFileSync("./out/pixiv-parsed.json", rawPixivHTML);
 
 			data = JSON.parse(rawPixivHTML);
 		} catch (e) {
@@ -1413,89 +1420,6 @@ const Reddit = (text, ctx, url) => {
 			L("No media in Reddit post");
 	}).catch(L);
 };
-
-/**
- * @param {String} text
- * @param {TelegramContext} ctx
- * @param {URL} url
- * @returns {void}
- */
-// const Instagram = (text, ctx, url) => {
-// 	NodeFetch(text).then((res) => {
-// 		if (res.status == 200)
-// 			return res.text();
-// 		else
-// 			return Promise.reject(`Status code = ${res.status}`);
-// 	}).then((instagramPage) => {
-// 		let actualInstaPost;
-
-// 		try {
-// 			instagramPage = instagramPage
-// 							.split("<body")[1]
-// 							.split(/<(script type="text\/javascript"|script)>window._sharedData\s+=\s+/)
-// 							.pop().split("</script>")[0].replace(/\;/g, "");
-
-// 			if (DEV) fs.writeFileSync("./out/instagram.json", instagramPage);
-
-// 			actualInstaPost = JSON.parse(instagramPage);
-// 			actualInstaPost = actualInstaPost.entry_data.PostPage[0].graphql.shortcode_media;
-// 		} catch (e) {
-// 			return L("Cannot parse Instagram data", e);
-// 		};
-
-
-// 		let sourcesArr = new Array();
-
-// 		if (actualInstaPost["edge_sidecar_to_children"])
-// 			sourcesArr = actualInstaPost["edge_sidecar_to_children"]["edges"].map((media) => {
-// 				if (!media["node"]["is_video"])
-// 					return { media: media["node"]["display_resources"].pop().src, type: "photo" };
-// 				else
-// 					return false;
-// 			}).filter(i => !!i);
-// 		else {
-// 			if (!actualInstaPost["is_video"])
-// 				sourcesArr = [{
-// 					media: actualInstaPost["display_resources"].pop().src, type: "photo"
-// 				}];
-// 			else
-// 				sourcesArr = [{
-// 					media: actualInstaPost["video_url"], type: "video"
-// 				}];
-// 		};
-
-
-// 		if (!sourcesArr.length) return L("No sources in Instagram post");
-
-
-// 		let caption = `Отправил ${GetUsername(ctx.from, "– ")}`;
-
-// 		if (sourcesArr.length === 1)
-// 			caption += `\n<a href="${encodeURI(sourcesArr[0].media)}">Исходник файла</a>`;
-// 		else
-// 			caption += "\nФайлы: " + sourcesArr.map((s, i) => `<a href="${encodeURI(s.media)}">${i + 1}</a>`).join(", ");
-
-
-// 		ctx.replyWithMediaGroup(sourcesArr)
-// 			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
-// 				L(sentMessage);
-
-// 				ctx.reply(caption, {
-// 					disable_web_page_preview: true,
-// 					parse_mode: "HTML",
-// 					reply_to_message_id: sentMessage.message_id,
-// 					reply_markup: Markup.inlineKeyboard([
-// 						Markup.urlButton("Пост", text),
-// 						Markup.urlButton("Автор", "https://instagram.com/" + actualInstaPost["owner"]["username"] + "/"),
-// 						...GlobalSetLikeButtons(ctx)
-// 					])
-// 				}).then(L).catch(L);
-
-// 				return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
-// 			})
-// 			.then(L).catch(L);
-// 	}).catch(L);
-// };
 
 /**
  * @param {String} text
