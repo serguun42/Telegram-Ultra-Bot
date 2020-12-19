@@ -1034,11 +1034,11 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 		url.origin == "https://pbs.twimg.com"
 	)
 		return resolve({ status: true, platform: TwitterImg, url });
-	// else if (
-	// 	url.host == "instagram.com" |
-	// 	url.host == "www.instagram.com"
-	// )
-	// 	return resolve({ status: true, platform: Instagram, url });
+	else if (
+		url.host == "instagram.com" |
+		url.host == "www.instagram.com"
+	)
+		return resolve({ status: true, platform: Instagram, url });
 	else if (
 		url.host == "reddit.com" |
 		url.host == "www.reddit.com"
@@ -1290,6 +1290,52 @@ const TwitterImg = (text, ctx, url) => {
 		})
 		.then(L)
 		.catch(L);
+};
+
+/**
+ * @param {String} text
+ * @param {TelegramContext} ctx
+ * @param {URL} _url
+ * @returns {void}
+ */
+const Instagram = (text, ctx, _url) => {
+    const CHECK_REGEXP = /http(s)?\:\/\/(www\.)?instagram\.com\/p\/(\w+)/i;
+    if (!CHECK_REGEXP.test(text)) { return; }
+
+    NodeFetch(`${text}`)
+        .then((res) => {
+            if (res.status == 200)
+                return res.text();
+            else
+                return Promise.reject(`Status code = ${res.status}`);
+        })
+        .then((instagram_raw_html) => {
+            const REGEXP = String.raw`<meta property=\"og:image\" content=\"(?<url>.+)\" />`;
+            const match = new RegExp(REGEXP).exec(instagram_raw_html);
+
+            if (!match) { return Promise.reject(`Img URL not found!`); }
+
+            return match.groups.url;
+        })
+        .then((img_url) => {
+            ctx
+                .replyWithPhoto(`${img_url}`, {
+                    caption: `Отправил ${GetUsername(ctx.from, "– ")}`,
+                    disable_web_page_preview: true,
+                    parse_mode: "HTML",
+                    reply_markup: Markup.inlineKeyboard([
+                        Markup.urlButton("Оригинал", `${img_url}`),
+                        ...GlobalSetLikeButtons(ctx)
+                    ])
+                })
+                .then(/** @param {TelegramMessageObject} sentMessage */(sentMessage) => {
+                    L(sentMessage);
+                    return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+                })
+                .then(L)
+                .catch(L);
+        })
+        .catch(L);
 };
 
 /**
