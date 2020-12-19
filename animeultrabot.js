@@ -17,16 +17,27 @@ const
 	KhaleesiModule = require("./animeultrabot.khaleesi.js");
 
 /**
+ * @typedef {Object} WelcomeMessageText
+ * @property {"text"} type
+ * @property {String} message
+ * 
+ * 
+ * @typedef {Object} WelcomeMessageGIF
+ * @property {"gif"} type
+ * @property {{file_id: string, caption?: string}} message
+ */
+/**
  * @typedef {Object} ConfigFile
  * @property {String} TELEGRAM_BOT_TOKEN
  * @property {String} TWITTER_CONSUMER_KEY
  * @property {String} TWITTER_CONSUMER_SECRET
  * @property {String} CUSTOM_IMG_VIEWER_SERVICE
  * @property {{id: number, username: string}} ADMIN_TELEGRAM_DATA
- * @property {Array.<{id: number, name?: string, enabled: boolean}>} CHATS_LIST
+ * @property {Array.<{id: number, name?: string, enabled: boolean, welcome?: WelcomeMessageText | WelcomeMessageGIF}>} CHATS_LIST
  * @property {String[]} COMMANDS_WHITELIST
  * @property {String[]} MARKS_WHITELIST
  * @property {String[]} BLACKLIST
+ * @property {Number} LIKES_STATS_CHANNEL_ID
  * @property {String} PROXY_URL
  */
 /** @type {ConfigFile} */
@@ -38,6 +49,7 @@ const
 	COMMANDS_WHITELIST = CONFIG.COMMANDS_WHITELIST,
 	MARKS_WHITELIST = CONFIG.MARKS_WHITELIST,
 	BLACKLIST = CONFIG.BLACKLIST,
+	LIKES_STATS_CHANNEL_ID = CONFIG.LIKES_STATS_CHANNEL_ID,
 	COMMANDS_USAGE = new Object(),
 	COMMANDS = {
 		"help": `Что я умею?
@@ -289,6 +301,15 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 	};
 
 
+	if (DEV) {
+		if (CHATS_LIST.reduce((accumulator, chatFromList) => {
+			if (chatFromList.id === chat["id"]) ++accumulator;
+			return accumulator;
+		}, 0) === 0)
+			console.log("NEW CHAT!", chat["id"], chat["title"], chat["type"]);
+	};
+
+
 	CHATS_LIST.forEach((chatFromList) => {
 		if (!chatFromList.enabled) return false;
 		if (chatFromList.id !== chat["id"]) return false;
@@ -331,15 +352,21 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 		if (/жаль([\.\?\!…]*)$/i.test(text.trim())) {
 			if (CheckForCommandAvailability(from)) {
-				if (Math.random() < 0.5)
+				if (Math.random() < 0.33) {
 					return ctx.reply("<i>…как Орлов, порхай как бабочка!</i>", {
 						parse_mode: "HTML",
 						reply_to_message_id: message.message_id
 					}).then(L).catch(L);
-				else
-					return ctx.replyWithSticker("CAACAgIAAx0CU5r_5QACCFlejL-ACp0b5UFZppv4rFVWZ9lZGwAChQYAAiMhBQABqCwuoKvunScYBA", {
-						reply_to_message_id: message.message_id
-					}).then(L).catch(L);
+				} else {
+					if (Math.random() < 0.5)
+						return ctx.replyWithSticker("CAACAgIAAx0CU5r_5QACCFlejL-ACp0b5UFZppv4rFVWZ9lZGwAChQYAAiMhBQABqCwuoKvunScYBA", {
+							reply_to_message_id: message.message_id
+						}).then(L).catch(L);
+					else
+						return ctx.replyWithAnimation("CgACAgIAAxkBAAIWpl-6h0sKFMfsMOOECb6M3kjr34vjAALMBwACaeiYSYFBpLc63EZvHgQ", {
+							reply_to_message_id: message.message_id
+						}).then(L).catch(L);
+				};
 			};
 		};
 
@@ -410,11 +437,23 @@ TOB.on("new_chat_members", /** @param {TelegramContext} ctx */ (ctx) => {
 		if (!chatFromList.enabled) return false;
 		if (chatFromList.id !== chat["id"]) return false;
 
-		ctx.reply(`Привет, ${GetUsername(message.from || message.new_chat_member || message.new_chat_members[0])}!\nМожешь кинуть ссылку на TJ и на список аниме?`, {
-			parse_mode: "HTML",
-			disable_web_page_preview: true,
-			reply_to_message_id: message.message_id
-		}).then(L).catch(L);
+		const { welcome } = chatFromList;
+		if (!welcome) return false;
+
+		if (welcome.type == "text") {
+			ctx.reply(welcome.message.replace("__USERNAME__", GetUsername(message.new_chat_member || message.new_chat_members[0])), {
+				parse_mode: "HTML",
+				disable_web_page_preview: true,
+				reply_to_message_id: message.message_id
+			}).then(L).catch(L);
+		} else if (welcome.type == "gif") {
+			ctx.replyWithAnimation(welcome.message.file_id, {
+				caption: welcome.message.caption ? welcome.message.caption.replace("__USERNAME__", GetUsername(message.new_chat_member || message.new_chat_members[0])) : "",
+				parse_mode: "HTML",
+				disable_web_page_preview: true,
+				reply_to_message_id: message.message_id
+			}).then(L).catch(L);
+		};
 	});
 });
 
@@ -497,6 +536,45 @@ const GlobalSetLikeButtons = () => {
 	];
 };
 
+/**
+ * @param {{target: "like"|"dislike", type: "set"|"removed"}} iAction
+ * @param {TelegramContext} ctx
+ * @returns {void}
+ */
+const GlobalReportAboutMark = (iAction, ctx) => {
+	const {update} = ctx;
+	if (!update) return L("OnMarkReport (1)");
+
+	const {callback_query} = update;
+	if (!callback_query) return L("OnMarkReport (2)");
+
+	/** @type {TelegramMessageObject} */
+	const message = callback_query["message"];
+	if (!message) return L("OnMarkReport (3)");
+
+	/** @type {TelegramFromObject} */
+	const from = callback_query["from"];
+	if (!from) return L("OnMarkReport (4)");
+
+	const {chat} = message;
+	if (!chat) return L("OnMarkReport (5)");
+
+
+	const
+		chatID = parseInt(chat.id.toString().replace(/^(\-)?1/, "")),
+		messageLink = `https://t.me/c/${chatID}/${message.message_id}`,
+		textToSend = `<b>${iAction.type === "set" ? "Поставлен" : "Убран"} ${iAction.target === "like" ? "лайк" : "дизлайк"}</b>
+Пользователь – ${GetUsername(from)}
+Чат – <i>${chat.title}</i>
+Пост – <a href="${messageLink}">${messageLink}</a>`;
+
+
+	telegram.sendMessage(LIKES_STATS_CHANNEL_ID, textToSend, {
+		disable_web_page_preview: true,
+		parse_mode: "HTML",
+	}).then(L).catch(L);
+};
+
 let godModeEnabled = false;
 /**
  * @param {TelegramFromObject} from
@@ -532,7 +610,7 @@ TOB.action(/^LIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) => {
 	/** @type {TelegramFromObject} */
 	const from = callback_query["from"];
 
-	// if (from["username"] && BLACKLIST.includes(from["username"])) return ctx.answerCbQuery("Порвался?");
+	if (from["username"] && BLACKLIST.includes(from["username"])) return ctx.answerCbQuery("Тебе нельзя ставить плюсы");
 
 	const {chat} = message;
 	if (!chat) return ctx.answerCbQuery("За лайк спасибо, но не засчитаю 😜 (4)");
@@ -548,46 +626,50 @@ TOB.action(/^LIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) => {
 
 		let messageToShow = "Cпасибо за лайк!";
 
-		if (GlobalCheckForGodMode(from)) {
-			--dislikeButtonCount;
-			if (dislikeButtonCount < 0) {
-				dislikeButtonCount = 0;
-				++likeButtonCount;
+		const isGod = GlobalCheckForGodMode(from);
+
+
+		if (!currentSessionPosts[postStamp] || !currentSessionPosts[postStamp].likedBy || !currentSessionPosts[postStamp].dislikedBy)
+			currentSessionPosts[postStamp] = {
+				likedBy: [],
+				dislikedBy: []
 			};
-		} else {
-			if (!currentSessionPosts[postStamp] || !currentSessionPosts[postStamp].likedBy || !currentSessionPosts[postStamp].dislikedBy)
-				currentSessionPosts[postStamp] = {
-					likedBy: [],
-					dislikedBy: []
-				};
 
-			let user = from["username"] || from["id"];
+		let user = from["username"] || from["id"];
 
-			L({user});
+		L({user});
 
-			if (currentSessionPosts[postStamp].likedBy.includes(user)) {
+		if (currentSessionPosts[postStamp].likedBy.includes(user)) {
+			if (isGod) {
+				++likeButtonCount;
+				GlobalReportAboutMark({ target: "like", type: "set" }, ctx);
+				messageToShow = "Ты поставил ещё один лайк, god";
+			} else {
 				--likeButtonCount;
+				GlobalReportAboutMark({ target: "like", type: "removed" }, ctx);
 				if (likeButtonCount < 0) likeButtonCount = 0;
 				messageToShow = "Ты убрал лайк 😢";
 				currentSessionPosts[postStamp].likedBy.splice(
 					currentSessionPosts[postStamp].likedBy.indexOf(user),
 					1
 				);
-			} else if (currentSessionPosts[postStamp].dislikedBy.includes(user)) {
-				currentSessionPosts[postStamp].likedBy.push(user);
-				currentSessionPosts[postStamp].dislikedBy.splice(
-					currentSessionPosts[postStamp].dislikedBy.indexOf(user),
-					1
-				);
-
-				--dislikeButtonCount;
-				++likeButtonCount;
-
-				if (dislikeButtonCount < 0) dislikeButtonCount = 0;
-			} else {
-				currentSessionPosts[postStamp].likedBy.push(user);
-				++likeButtonCount;
 			};
+		} else if (currentSessionPosts[postStamp].dislikedBy.includes(user)) {
+			currentSessionPosts[postStamp].likedBy.push(user);
+			currentSessionPosts[postStamp].dislikedBy.splice(
+				currentSessionPosts[postStamp].dislikedBy.indexOf(user),
+				1
+			);
+
+			--dislikeButtonCount;
+			++likeButtonCount;
+			GlobalReportAboutMark({ target: "like", type: "set" }, ctx);
+
+			if (dislikeButtonCount < 0) dislikeButtonCount = 0;
+		} else {
+			currentSessionPosts[postStamp].likedBy.push(user);
+			++likeButtonCount;
+			GlobalReportAboutMark({ target: "like", type: "set" }, ctx);
 		};
 
 
@@ -642,47 +724,50 @@ TOB.action(/^DISLIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) => {
 
 		let messageToShow = "Cпасибо за дизлайк!";
 
-		if (GlobalCheckForGodMode(from)) {
-			--likeButtonCount;
-			if (likeButtonCount < 0) {
-				likeButtonCount = 0;
-				++dislikeButtonCount;
+		const isGod = GlobalCheckForGodMode(from);
+
+
+		if (!currentSessionPosts[postStamp] || !currentSessionPosts[postStamp].likedBy || !currentSessionPosts[postStamp].dislikedBy)
+			currentSessionPosts[postStamp] = {
+				likedBy: [],
+				dislikedBy: []
 			};
-		} else {
-			if (!currentSessionPosts[postStamp] || !currentSessionPosts[postStamp].likedBy || !currentSessionPosts[postStamp].dislikedBy)
-				currentSessionPosts[postStamp] = {
-					likedBy: [],
-					dislikedBy: []
-				};
 
+		let user = from["username"] || from["id"];
 
-			let user = from["username"] || from["id"];
+		L({user});
 
-			L({user});
-
-			if (currentSessionPosts[postStamp].dislikedBy.includes(user)) {
+		if (currentSessionPosts[postStamp].dislikedBy.includes(user)) {
+			if (isGod) {
+				++dislikeButtonCount;
+				GlobalReportAboutMark({ target: "dislike", type: "set" }, ctx);
+				messageToShow = "Ты поставил ещё один дизлайк, god";
+			} else {
 				--dislikeButtonCount;
+				GlobalReportAboutMark({ target: "dislike", type: "removed" }, ctx);
 				if (dislikeButtonCount < 0) dislikeButtonCount = 0;
 				messageToShow = "Ты убрал дизлайк 😊";
 				currentSessionPosts[postStamp].dislikedBy.splice(
 					currentSessionPosts[postStamp].dislikedBy.indexOf(user),
 					1
 				);
-			} else if (currentSessionPosts[postStamp].likedBy.includes(user)) {
-				currentSessionPosts[postStamp].dislikedBy.push(user);
-				currentSessionPosts[postStamp].likedBy.splice(
-					currentSessionPosts[postStamp].likedBy.indexOf(user),
-					1
-				);
-
-				++dislikeButtonCount;
-				--likeButtonCount;
-				
-				if (likeButtonCount < 0) likeButtonCount = 0;
-			} else {
-				currentSessionPosts[postStamp].dislikedBy.push(user);
-				++dislikeButtonCount;
 			};
+		} else if (currentSessionPosts[postStamp].likedBy.includes(user)) {
+			currentSessionPosts[postStamp].dislikedBy.push(user);
+			currentSessionPosts[postStamp].likedBy.splice(
+				currentSessionPosts[postStamp].likedBy.indexOf(user),
+				1
+			);
+
+			++dislikeButtonCount;
+			--likeButtonCount;
+			GlobalReportAboutMark({ target: "dislike", type: "set" }, ctx);
+
+			if (likeButtonCount < 0) likeButtonCount = 0;
+		} else {
+			currentSessionPosts[postStamp].dislikedBy.push(user);
+			++dislikeButtonCount;
+			GlobalReportAboutMark({ target: "dislike", type: "set" }, ctx);
 		};
 
 
@@ -917,7 +1002,8 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 
 	if (
 		url.host == "twitter.com" |
-		url.host == "www.twitter.com"
+		url.host == "www.twitter.com" |
+		url.host == "mobile.twitter.com"
 	)
 		return resolve({ status: true, platform: Twitter, url });
 	else if (
@@ -1163,14 +1249,15 @@ const Twitter = (text, ctx, url) => {
  * @returns {void}
  */
 const TwitterImg = (text, ctx, url) => {
-	let format = GlobalParseQuery(url.query)["format"] || "jpg";
+	const format = GlobalParseQuery(url.query)["format"] || "jpg",
+		  mediaPathname = url.pathname.replace(/\:[\w\d]+$/, "").replace(/\.[\w\d]+$/, "");
 
-	ctx.replyWithPhoto(`https://pbs.twimg.com${url.pathname}.${format}:orig`, {
+	ctx.replyWithPhoto(`https://pbs.twimg.com${mediaPathname}.${format}:orig`, {
 		caption: `Отправил ${GetUsername(ctx.from, "– ")}`,
 		disable_web_page_preview: true,
 		parse_mode: "HTML",
 		reply_markup: Markup.inlineKeyboard([
-			Markup.urlButton("Оригинал", `https://pbs.twimg.com${url.pathname}.${format}:orig`),
+			Markup.urlButton("Оригинал", `https://pbs.twimg.com${mediaPathname}.${format}:orig`),
 			...GlobalSetLikeButtons(ctx)
 		])
 	})

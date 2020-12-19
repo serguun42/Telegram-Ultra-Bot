@@ -36,6 +36,7 @@
 		"bad_user1",
 		"bad_user2"
 	],
+	"LIKES_STATS_CHANNEL_ID": -123456789000000000099,
 	"EMPTY_QUERY_IMG": "https://yourservice.io/spoiler_inline_empty.png",
 	"DONE_QUERY_IMG": "https://yourservice.io/spoiler_inline_filled.png"
 }
