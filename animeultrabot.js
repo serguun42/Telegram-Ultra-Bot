@@ -517,7 +517,8 @@ const CheckForCommandAvailability = (from) => {
 
 /** @type {{[postStamp: string]: {likedBy: string[], dislikedBy: string[]}}} */
 let currentSessionPosts = {},
-	currentSessionStamp = 0;
+	currentSessionStamp = 0,
+	hotUsersLikes = {};
 
 /**
  * @returns {[{[x: string]: string|number|boolean}]}
@@ -639,6 +640,17 @@ TOB.action(/^LIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) => {
 
 		L({user});
 
+
+		if (!hotUsersLikes[user])
+			hotUsersLikes[user] = 1;
+		else
+			++hotUsersLikes[user];
+
+		setTimeout(() => --hotUsersLikes[user], 5 * 1e3);
+
+		if (hotUsersLikes[user] > 3 && !isGod) return ctx.answerCbQuery("Слишком много оценок, подождите немного");
+
+
 		if (currentSessionPosts[postStamp].likedBy.includes(user)) {
 			if (isGod) {
 				++likeButtonCount;
@@ -736,6 +748,17 @@ TOB.action(/^DISLIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) => {
 		let user = from["username"] || from["id"];
 
 		L({user});
+
+
+		if (!hotUsersLikes[user])
+			hotUsersLikes[user] = 1;
+		else
+			++hotUsersLikes[user];
+
+		setTimeout(() => --hotUsersLikes[user], 5 * 1e3);
+
+		if (hotUsersLikes[user] > 3 && !isGod) return ctx.answerCbQuery("Слишком много оценок, подождите немного");
+
 
 		if (currentSessionPosts[postStamp].dislikedBy.includes(user)) {
 			if (isGod) {
