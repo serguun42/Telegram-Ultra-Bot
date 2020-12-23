@@ -42,7 +42,14 @@
 
 ## Конфигурация
 
-Всё указывается и настраивается в файле `animeultrabot.config.json` – токены для Telegram и Twitter, список чатов с id, white-list для команд, данные админа, картинки для взаимодействия с пользователем в inline-режиме и т.п.
+Всё указывается и настраивается в файле `animeultrabot.config.json`:
+* токены для Telegram и Twitter
+* cookie для Instagram
+* список чатов с id и, опционально, с приветствиями
+* white-list пользователей для использования команд (нет таймаута)
+* данные админа
+* картинки для взаимодействия с пользователем в inline-режиме для отправки спойлеров (можно/нельзя ли отправить спойлер)
+* id Telegram-канала для отправки статистики по лайкам (бот должен быть админом в том канале) и т.п.
 
 ## Использующиеся модули
 
@@ -54,6 +61,6 @@
 * [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS) – ровно такой же модуль есть и в этом репозитории (нет в npm/yarn)
 
 #### Полезные ссылки
-* [Telegraf Module for Node.jS](https://telegraf.js.org/)
+* [Telegraf Module for Node.js](https://telegraf.js.org/)
 * [Telegram Bots API](https://core.telegram.org/bots/api)
 * [Twitter API page for getting status](https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/get-statuses-show-id)

@@ -38,18 +38,22 @@ const
  * @property {String[]} MARKS_WHITELIST
  * @property {String[]} BLACKLIST
  * @property {Number} LIKES_STATS_CHANNEL_ID
+ * @property {String} INSTAGRAM_COOKIE
  * @property {String} PROXY_URL
  */
 /** @type {ConfigFile} */
 const
-	CONFIG = JSON.parse(fs.readFileSync("./animeultrabot.config.json")),
-	TELEGRAM_BOT_TOKEN = CONFIG.TELEGRAM_BOT_TOKEN,
-	ADMIN_TELEGRAM_DATA = CONFIG.ADMIN_TELEGRAM_DATA,
-	CHATS_LIST = CONFIG.CHATS_LIST,
-	COMMANDS_WHITELIST = CONFIG.COMMANDS_WHITELIST,
-	MARKS_WHITELIST = CONFIG.MARKS_WHITELIST,
-	BLACKLIST = CONFIG.BLACKLIST,
-	LIKES_STATS_CHANNEL_ID = CONFIG.LIKES_STATS_CHANNEL_ID,
+	CONFIG = require("./animeultrabot.config.json"),
+	{
+		TELEGRAM_BOT_TOKEN,
+		ADMIN_TELEGRAM_DATA,
+		CHATS_LIST,
+		COMMANDS_WHITELIST,
+		MARKS_WHITELIST,
+		BLACKLIST,
+		LIKES_STATS_CHANNEL_ID,
+		INSTAGRAM_COOKIE
+	} = CONFIG,
 	COMMANDS_USAGE = new Object(),
 	COMMANDS = {
 		"help": `Что я умею?
@@ -306,7 +310,7 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 			if (chatFromList.id === chat["id"]) ++accumulator;
 			return accumulator;
 		}, 0) === 0)
-			console.log("NEW CHAT!", chat["id"], chat["title"], chat["type"]);
+			L(["NEW CHAT!", chat["id"], chat["title"], chat["type"]]);
 	};
 
 
@@ -458,8 +462,6 @@ TOB.on("new_chat_members", /** @param {TelegramContext} ctx */ (ctx) => {
 });
 
 TOB.launch();
-
-
 
 
 
@@ -1295,47 +1297,128 @@ const TwitterImg = (text, ctx, url) => {
 /**
  * @param {String} text
  * @param {TelegramContext} ctx
- * @param {URL} _url
+ * @param {URL} url
  * @returns {void}
  */
-const Instagram = (text, ctx, _url) => {
-    const CHECK_REGEXP = /http(s)?\:\/\/(www\.)?instagram\.com\/p\/(\w+)/i;
-    if (!CHECK_REGEXP.test(text)) { return; }
+const Instagram = (text, ctx, url) => {
+	const CHECK_REGEXP = /http(s)?\:\/\/(www\.)?instagram\.com\/p\/([\w\d_]+)/i;
+	if (!CHECK_REGEXP.test(text)) return;
 
-    NodeFetch(`${text}`)
-        .then((res) => {
-            if (res.status == 200)
-                return res.text();
-            else
-                return Promise.reject(`Status code = ${res.status}`);
-        })
-        .then((instagram_raw_html) => {
-            const REGEXP = String.raw`<meta property=\"og:image\" content=\"(?<url>.+)\" />`;
-            const match = new RegExp(REGEXP).exec(instagram_raw_html);
 
-            if (!match) { return Promise.reject(`Img URL not found!`); }
+	NodeFetch(`${text}?__a=1`, {
+		"headers": {
+			"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+			"accept-language": "ru-RU,ru;q=0.9",
+			"accept-encoding": "gzip, deflate, br",
+			"cache-control": "max-age=0",
+			"cookie": INSTAGRAM_COOKIE,
+			"dnt": 1,
+			"sec-fetch-dest": "document",
+			"sec-fetch-mode": "navigate",
+			"sec-fetch-site": "same-origin",
+			"sec-fetch-user": "?1",
+			"upgrade-insecure-requests": "1",
+			"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.107 Safari/537.36"
+		}
+	})
+		.then((res) => {
+			if (res.status == 200)
+				return res.json();
+			else
+				return Promise.reject(`Status code = ${res.status}`);
+		})
+		.then((graphData) => {
+			const post = graphData?.graphql?.shortcode_media;
 
-            return match.groups.url;
-        })
-        .then((img_url) => {
-            ctx
-                .replyWithPhoto(`${img_url}`, {
-                    caption: `Отправил ${GetUsername(ctx.from, "– ")}`,
-                    disable_web_page_preview: true,
-                    parse_mode: "HTML",
-                    reply_markup: Markup.inlineKeyboard([
-                        Markup.urlButton("Оригинал", `${img_url}`),
-                        ...GlobalSetLikeButtons(ctx)
-                    ])
-                })
-                .then(/** @param {TelegramMessageObject} sentMessage */(sentMessage) => {
-                    L(sentMessage);
-                    return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
-                })
-                .then(L)
-                .catch(L);
-        })
-        .catch(L);
+			if (!post) return Promise.reject({
+				message: "No post in... post",
+				graphData
+			});
+
+
+			const sourcesArr = post?.edge_sidecar_to_children?.edges.map((edge) => {
+				if (!edge.node) return null;
+
+				if (edge.node.is_video && edge.node.video_url)
+					return {
+						type: "video",
+						media: edge.node.video_url
+					};
+
+				return {
+					type: "photo",
+					media: edge.node?.display_resources?.sort((prev, next) => prev?.config_width - next?.config_width).pop().src
+				};
+			}).filter((edge, index, array) => {
+				if (!edge) return false;
+				if (array.length > 1 && edge.type === "video") return false;
+
+				return true;
+			}) || [];
+
+			if (!sourcesArr.length) {
+				if (post.is_video && post.video_url) {
+					sourcesArr.push({
+						type: "video",
+						media: post.video_url
+					});
+				} else {
+					sourcesArr.push({
+						type: "photo",
+						media: post.display_resources?.sort((prev, next) => prev?.config_width - next?.config_width).pop().src
+					});
+				};
+			};
+
+
+			let caption = `<i>${TGE(post?.edge_media_to_caption?.edges?.[0]?.node.text || "")}</i>\n\nОтправил ${GetUsername(ctx.from, "– ")}`;
+			const author = `https://instagram.com/${post?.owner?.username || ""}`;
+
+
+			if (sourcesArr.length === 1)
+				caption += `\n<a href="${encodeURI(sourcesArr[0].media)}">Исходник файла</a>`;
+			else
+				caption += "\nФайлы: " + sourcesArr.map(({ media }, i) => `<a href="${encodeURI(media)}">${i + 1}</a>`).join(", ");
+
+
+			if (sourcesArr.length === 1) {
+				ctx[sourcesArr[0].type === "video" ? "replyWithVideo" : "replyWithPhoto"](sourcesArr[0].media, {
+					caption,
+					disable_web_page_preview: true,
+					parse_mode: "HTML",
+					reply_markup: Markup.inlineKeyboard([
+						Markup.urlButton("Пост", text),
+						Markup.urlButton("Автор", author),
+						...GlobalSetLikeButtons(ctx)
+					])
+				})
+					.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+						L(sentMessage);
+						return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+					})
+					.then(L).catch(L);
+			} else {
+				ctx.replyWithMediaGroup(sourcesArr)
+					.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+						L(sentMessage);
+
+						ctx.reply(caption, {
+							disable_web_page_preview: true,
+							parse_mode: "HTML",
+							reply_to_message_id: sentMessage.message_id,
+							reply_markup: Markup.inlineKeyboard([
+								Markup.urlButton("Пост", text),
+								Markup.urlButton("Автор", author),
+								...GlobalSetLikeButtons(ctx)
+							])
+						}).then(L).catch(L);
+
+						return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+					})
+					.then(L).catch(L);
+			};
+		})
+		.catch(L);
 };
 
 /**

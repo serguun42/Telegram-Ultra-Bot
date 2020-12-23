@@ -3,6 +3,7 @@
 	"TWITTER_CONSUMER_KEY": "AAAAaaaAAAAAA",
 	"TWITTER_CONSUMER_SECRET": "BBBBBBBBBBBbbbbbbbbbbBBBBBBBBBBBBBBBBBBB",
 	"CUSTOM_IMG_VIEWER_SERVICE": "__LINK__ заменяется на ссылку поста. __HEADERS__ заменяется на HTTP-заголовок \"Referer\" со значением равным \"http://pixiv.net\" в случае Пиксива и на адрес поста в случае anime.reactor.cc",
+	"INSTAGRAM_COOKIE": "Куки из instagram.com для любого активного и залогиненного аккаунта. Пример: ig_did=123456789; mid=123456789; shbid=123456789; shbts=123456789; rur=ASD; ig_nrcb=123; csrftoken=123456789ABCDEF; ds_user_id=123456789; sessionid=123456789%A%BCDEF; urlgen=\"{\\\"127.0.0.1\\\": 123456\\054 \\\"127.0.0.1\\\": 123456}:123456789:123456789_ABCDEF\"",
 	"ADMIN_TELEGRAM_DATA": {
 		"id": 123456789000000000000,
 		"username": "admin_username"
@@ -11,7 +12,11 @@
 		{
 			"id": -123456789000000000000,
 			"name": "TEST CHAT",
-			"enabled": true
+			"enabled": true,
+			"welcome": {
+				"type": "text",
+				"message": "Привет, __USERNAME__!\nМожешь кинуть ссылку на свой список аниме?"
+			}
 		},
 		{
 			"id": -123456789000000000001,
@@ -21,7 +26,14 @@
 		{
 			"id": -123456789000000000002,
 			"name": "OTHER CHAT",
-			"enabled": false
+			"enabled": false,
+			"welcome": {
+				"type": "gif",
+				"message": {
+					"file_id": "AAAAAAAAAAAAAAAAA-BBBBBBBBBBBBBBBBBBBBB-CCCCCCCCCCCCC-123456789",
+					"caption": "Добро пожаловать в наш клуб! Во что играешь?"
+				}
+			}
 		}
 	],
 	"COMMANDS_WHITELIST": [
