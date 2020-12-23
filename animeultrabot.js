@@ -1301,11 +1301,11 @@ const TwitterImg = (text, ctx, url) => {
  * @returns {void}
  */
 const Instagram = (text, ctx, url) => {
-	const CHECK_REGEXP = /http(s)?\:\/\/(www\.)?instagram\.com\/p\/([\w\d_]+)/i;
-	if (!CHECK_REGEXP.test(text)) return;
+	const PATH_REGEXP = /^\/p\/([\w\_\-]+)(\/)?$/i;
+	if (!PATH_REGEXP.test(url.pathname)) return;
 
 
-	NodeFetch(`${text}?__a=1`, {
+	NodeFetch(`https://${url.hostname}${url.pathname}?__a=1`, {
 		"headers": {
 			"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
 			"accept-language": "ru-RU,ru;q=0.9",
