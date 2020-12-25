@@ -32,27 +32,35 @@ const
  * @property {String} TWITTER_CONSUMER_KEY
  * @property {String} TWITTER_CONSUMER_SECRET
  * @property {String} CUSTOM_IMG_VIEWER_SERVICE
+ * @property {String} INSTAGRAM_COOKIE
  * @property {{id: number, username: string}} ADMIN_TELEGRAM_DATA
  * @property {Array.<{id: number, name?: string, enabled: boolean, welcome?: WelcomeMessageText | WelcomeMessageGIF}>} CHATS_LIST
  * @property {String[]} COMMANDS_WHITELIST
  * @property {String[]} MARKS_WHITELIST
  * @property {String[]} BLACKLIST
  * @property {Number} LIKES_STATS_CHANNEL_ID
- * @property {String} INSTAGRAM_COOKIE
- * @property {String} PROXY_URL
+ * @property {String} SPECIAL_STICKERS_SET
+ * @property {String} EMPTY_QUERY_IMG
+ * @property {String} DONE_QUERY_IMG
  */
 /** @type {ConfigFile} */
 const
 	CONFIG = require("./animeultrabot.config.json"),
 	{
 		TELEGRAM_BOT_TOKEN,
+		TWITTER_CONSUMER_KEY,
+		TWITTER_CONSUMER_SECRET,
+		CUSTOM_IMG_VIEWER_SERVICE,
+		INSTAGRAM_COOKIE,
 		ADMIN_TELEGRAM_DATA,
 		CHATS_LIST,
 		COMMANDS_WHITELIST,
 		MARKS_WHITELIST,
 		BLACKLIST,
 		LIKES_STATS_CHANNEL_ID,
-		INSTAGRAM_COOKIE
+		SPECIAL_STICKERS_SET,
+		EMPTY_QUERY_IMG,
+		DONE_QUERY_IMG
 	} = CONFIG,
 	COMMANDS_USAGE = new Object(),
 	COMMANDS = {
@@ -101,6 +109,7 @@ const
 
 Чтобы я показал тебе скрытую картинку, <a href="https://t.me/animeultrabot">начни со мной диалог</a>.`,
 		"khaleesi": (ctx) => Khaleesi(ctx),
+		"chebotarb": (ctx) => Chebotarb(ctx),
 		"testcommand": `<pre>Ну и што ты здесь зобылб?</pre>`
 	};
 
@@ -239,8 +248,8 @@ if (!DEV)
 
 
 const TwitterUser = new TwitterModule({
-	consumer_key: CONFIG.TWITTER_CONSUMER_KEY, // from Twitter
-	consumer_secret: CONFIG.TWITTER_CONSUMER_SECRET, // from Twitter
+	consumer_key: TWITTER_CONSUMER_KEY, // from Twitter
+	consumer_secret: TWITTER_CONSUMER_SECRET, // from Twitter
 });
 
 let TwitterApp = new TwitterModule({
@@ -489,6 +498,29 @@ const Khaleesi = (ctx) => {
 	ctx.reply(khaleesiedText, {
 		reply_to_message_id: replyingMessage.message_id
 	}).then(L).catch(L);
+};
+
+/**
+ * @param {TelegramContext} ctx
+ */
+const Chebotarb = (ctx) => {
+	const {message} = ctx;
+	if (!message) return;
+
+	const replyingMessage = message.reply_to_message;
+
+	L({ replyingMessage });
+
+	telegram.getStickerSet(SPECIAL_STICKERS_SET).then((stickerSet) => {
+		const randomSticker = stickerSet.stickers[Math.floor(Math.random() * stickerSet.stickers.length)];
+
+		L({ randomSticker });
+
+		ctx.replyWithSticker(randomSticker["file_id"], replyingMessage ? {
+			reply_to_message_id: replyingMessage.message_id,
+			allow_sending_without_reply: false
+		} : {}).then(L).catch(L);
+	}).catch(L);
 };
 
 /**
@@ -862,7 +894,7 @@ TOB.on("inline_query", ({ inlineQuery, answerInlineQuery }) => {
 			id: `spoiler_empty`,
 			title: "Пожалуйста, наберите что-нибудь",
 			description: "█████████ ████████ █████",
-			thumb_url: CONFIG.EMPTY_QUERY_IMG,
+			thumb_url: EMPTY_QUERY_IMG,
 			input_message_content: {
 				message_text: "<Я дурачок и не набрал текст>"
 			}
@@ -875,7 +907,7 @@ TOB.on("inline_query", ({ inlineQuery, answerInlineQuery }) => {
 		type: "article",
 		id: `spoiler_${inlineQuery.from.usernname || inlineQuery.from.id}_${Date.now()}`,
 		title: "Отправить скрытый текст",
-		thumb_url: CONFIG.DONE_QUERY_IMG,
+		thumb_url: DONE_QUERY_IMG,
 		description: remarked,
 		input_message_content: {
 			message_text: remarked.slice(0, 20)
@@ -1517,9 +1549,9 @@ const Pixiv = (text, ctx, url) => {
 			caption += ` ⬅️ Перейди по ссылке: ${sourcesAmount} ${GetForm(sourcesAmount, ["иллюстрация", "иллюстрации", "иллюстраций"])} не влезли в сообщение`;
 
 		if (sourcesAmount === 1)
-			caption += `\n<a href="${CONFIG.CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, encodeURIComponent(sourcesOrig[0].media)).replace(/__HEADERS__/, encodeURIComponent(JSON.stringify({Referer: "http://www.pixiv.net/"})))}">Исходник файла</a>`;
+			caption += `\n<a href="${CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, encodeURIComponent(sourcesOrig[0].media)).replace(/__HEADERS__/, encodeURIComponent(JSON.stringify({Referer: "http://www.pixiv.net/"})))}">Исходник файла</a>`;
 		else
-			caption += "\nФайлы: " + sourcesOrig.map((s, i) => `<a href="${CONFIG.CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, encodeURIComponent(s.media)).replace(/__HEADERS__/, encodeURIComponent(JSON.stringify({Referer: "http://www.pixiv.net/"})))}">${i + 1}</a>`).join(", ");
+			caption += "\nФайлы: " + sourcesOrig.map((s, i) => `<a href="${CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, encodeURIComponent(s.media)).replace(/__HEADERS__/, encodeURIComponent(JSON.stringify({Referer: "http://www.pixiv.net/"})))}">${i + 1}</a>`).join(", ");
 
 
 		if (sourcesForTG.length === 1) {
@@ -2192,7 +2224,7 @@ const Joyreactor = (text, ctx, url) => {
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
-					Markup.urlButton("Исходник", encodeURI(CONFIG.CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, source).replace(/__HEADERS__/, JSON.stringify({"Referer": text})))),
+					Markup.urlButton("Исходник", encodeURI(CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, source).replace(/__HEADERS__/, JSON.stringify({"Referer": text})))),
 					Markup.urlButton("Пост", encodeURI(text)),
 					...GlobalSetLikeButtons(ctx)
 				])
