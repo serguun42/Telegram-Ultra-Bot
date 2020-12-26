@@ -10,7 +10,7 @@ const KhaleesiPostCorrection = {
 			if (word.length < 2) return result.push(word)
 			
 			if (/ийи/gi.test(word))
-				return result.push(word.replace(/(и)й(и)/gi, "$1$3"));
+				return result.push(word.replace(/(и)й(и)/gi, "$1$2"));
 
 			if (/^(сьто|чьто)/.test(word)) {
 				let randomWhat = KhaleesiPostCorrection.WHATS[Math.floor(KhaleesiPostCorrection.WHATS.length * Math.random())];
