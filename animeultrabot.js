@@ -37,7 +37,7 @@ const
  * @property {Array.<{id: number, name?: string, enabled: boolean, welcome?: WelcomeMessageText | WelcomeMessageGIF}>} CHATS_LIST
  * @property {String[]} COMMANDS_WHITELIST
  * @property {String[]} MARKS_WHITELIST
- * @property {String[]} BLACKLIST
+ * @property {String[] | Number[]} BLACKLIST
  * @property {Number} LIKES_STATS_CHANNEL_ID
  * @property {String} SPECIAL_STICKERS_SET
  * @property {String} EMPTY_QUERY_IMG
@@ -294,11 +294,9 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 
 
-		let commandMatch = text.match(/^\/([\w]+)(\@animeultrabot)?$/i);
+		const commandMatch = text.match(/^\/([\w]+)$/i);
 
 		if (commandMatch && commandMatch[1]) {
-			telegram.deleteMessage(chat.id, message.message_id).then(L).catch(L);
-
 			L({commandMatch});
 
 			if (typeof COMMANDS[commandMatch[1]] == "string")
@@ -340,7 +338,7 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 
 
-		let commandMatch = text.match(/^\/([\w]+)(\@animeultrabot)?$/i);
+		const commandMatch = text.match(/^\/([\w]+)\@animeultrabot$/i);
 
 		if (commandMatch && commandMatch[1]) {
 			telegram.deleteMessage(chat.id, message.message_id).then(L).catch(L);
@@ -531,7 +529,7 @@ const CheckForCommandAvailability = (from) => {
 	let pass = false;
 	if (from.username && COMMANDS_WHITELIST.includes(from.username))
 		pass = true;
-	else if (from.username && BLACKLIST.includes(from.username))
+	else if ((from.username && BLACKLIST.includes(from.username)) || (from.id && BLACKLIST.includes(from.id)))
 		pass = false;
 	else {
 		let lastTimeCalled = COMMANDS_USAGE[from.id];
