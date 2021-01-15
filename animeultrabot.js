@@ -1053,7 +1053,7 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 	if (message.entities[0].length !== message["text"].length) return resolve({ status: false });
 
 
-	let url = URL.parse(message["text"]);
+	const url = URL.parse(message["text"]);
 
 	if (
 		url.host == "twitter.com" |
@@ -1401,7 +1401,7 @@ const Instagram = (text, ctx, url) => {
 			};
 
 
-			let caption = `<i>${TGE(post?.edge_media_to_caption?.edges?.[0]?.node.text || "")}</i>\n\nОтправил ${GetUsername(ctx.from, "– ")}`;
+			let caption = `Отправил ${GetUsername(ctx.from, "– ")}`;
 			const author = `https://instagram.com/${post?.owner?.username || ""}`;
 
 
@@ -1598,95 +1598,117 @@ const Pixiv = (text, ctx, url) => {
  * @returns {void}
  */
 const Reddit = (text, ctx, url) => {
-	NodeFetch(text).then((res) => {
+	if (!url.pathname) return;
+
+	const REDDIT_POST_REGEXP = /^(\/r\/[\w\d\-\._]+\/comments\/[\w\d\-\.]+)(\/)?/i;
+	const match = url.pathname.match(REDDIT_POST_REGEXP);
+
+	if (!(match && match[1])) return;
+
+	const postJSON = `https://www.reddit.com${match[1]}.json`,
+		  postURL = `https://www.reddit.com${match[1]}${match[2] || ""}`;
+
+
+	NodeFetch(postJSON, {
+		headers: {
+			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+			"Accept-Encoding": "gzip, deflate, br",
+			"Accept-Language": "en-US,en;q=0.9,ru;q=0.8",
+			"Cache-Control": "no-cache",
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36",
+			"Origin": "https://www.reddit.com",
+			"Pragma": "no-cache",
+			"referer": "https://www.reddit.com/"
+		}
+	}).then((res) => {
 		if (res.status == 200)
-			return res.text();
+			return res.json();
 		else
 			return Promise.reject(`Status code = ${res.status}`);
-	}).then((redditPage) => {
-		let data;
+	}).then((redditPostData) => {
+		const post = redditPostData[0]?.data?.children?.[0]?.data,
+			  title = post?.title,
+			  caption = `${title ? `<i>${TGE(title)}</i>\n\n` : ""}Отправил ${GetUsername(ctx.from, "– ")}`,
+			  author = post?.author,
+			  isVideo = post?.is_video,
+			  isGallery = post?.is_gallery;
 
-		try {
-			redditPage = redditPage
-					.split("<body")[1]
-					.split(/<(script id\=\"data\")>window\.___r\s\=\s/)
-					.pop().split("</script>")[0].replace(/\;/g, "");
-
-			if (DEV) fs.writeFileSync("./out/reddit.json", redditPage);
-
-			data = JSON.parse(redditPage);
-		} catch (e) {
-			return L("Cannot parse data from Reddit", e);
-		};
+		if (!post) return L("No post in .json-data");
 
 
-		const models = data["posts"]["models"]
-		const post = models[Object.keys(models)[0]];
+		if (isVideo) {
+			const video = post?.secure_media?.reddit_video?.fallback_url;
+			if (!video) return L("Reddit no video");
 
-
-		let source = {
-			media: "",
-			type: ""
-		};
-
-
-		if (post["media"]) {
-			let media = post["media"];
-
-			if (media["type"] === "image") {
-				if (media["content"])
-					source = { media: media["content"], type: "photo" };
-			} else if (media["type"] === "gifvideo") {
-				if (media["content"])
-					source = { media: media["content"], type: "animation" };
-			} else if (media["type"] === "video") {
-				let videoFileURL = media["scrubberThumbSource"].replace(/\d+$/, media["height"]);
-
-				if (media["isGif"] && media["scrubberThumbSource"] && media["height"])
-					source = { media: videoFileURL, type: "animation" };
-				else if (media["scrubberThumbSource"] && media["height"])
-					source = { media: videoFileURL, type: "video" };
-			};
-		};
-
-
-		if (!!source.media & !!source.type) {
-			let caption = `<i>${TGE((post["title"] || "").trim())}</i>\n<a href="${encodeURI("https://www.reddit.com/user/" + post["author"] + "/")}">/u/${post["author"]}</a>\n\nОтправил ${GetUsername(ctx.from, "– ")}`,
-				callingMethod = (source.type === "photo" ? "replyWithPhoto" : "replyWithAnimation");
-
-
-			try {
-				let pathname = post["permalink"];
-					pathname = URL.parse(pathname).pathname;
-
-				if (pathname) {
-					let match = pathname.match(/^\/(r\/[\w\d\-_]+)\//);
-					if (match) {
-						if (match[1]) {
-							caption = `<i>${TGE((post["title"] || "").trim())}</i>\n<a href="${encodeURI("https://www.reddit.com/" + match[1] + "/")}">${TGE(match[1])}</a>\n\nОтправил ${GetUsername(ctx.from, "– ")}`;
-						};
-					};
-				};
-			} catch (e) {};
-
-
-			ctx[callingMethod](source.media, {
-				caption,
+			ctx.replyWithVideo(video, {
+				caption: `${caption}\n<a href="${encodeURI(video)}">Исходник видео</a>`,
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
-					Markup.urlButton("Пост", encodeURI(text)),
-					Markup.urlButton("Исходник", source.media),
+					Markup.urlButton("Пост", postURL),
+					Markup.urlButton("Автор", `https://www.reddit.com/u/${author || "me"}`),
 					...GlobalSetLikeButtons(ctx)
 				])
 			})
+			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+				L(sentMessage);
+				return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+			})
+			.then(L).catch(L);
+		} else {
+			if (isGallery) {
+				const mediaURLs = post?.gallery_data?.items?.map((item) => post?.media_metadata?.[item.media_id]?.s?.u).map((mediaURL) => {
+					try {
+						let url = URL.parse(mediaURL);
+
+						return `https://${url.hostname.replace(/^preview\./i, "i.")}${url.pathname}`;
+					} catch (e) {
+						return "";
+					};
+				}).filter((mediaURL) => !!mediaURL);
+
+				if (!mediaURLs || !mediaURLs.length) return L("Reddit no gallery");
+
+
+				ctx.replyWithMediaGroup(mediaURLs.map((mediaURL) => ({ type: "photo", media: mediaURL })))
+				.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+					L(sentMessage);
+
+					ctx.reply(`${caption}\nФайлы: ${mediaURLs.map((mediaURL, index) => `<a href="${encodeURI(mediaURL)}">${index + 1}</a>`).join(", ")}`, {
+						disable_web_page_preview: true,
+						parse_mode: "HTML",
+						reply_to_message_id: sentMessage.message_id,
+						reply_markup: Markup.inlineKeyboard([
+							Markup.urlButton("Пост", postURL),
+							Markup.urlButton("Автор", `https://www.reddit.com/u/${author || "me"}`),
+							...GlobalSetLikeButtons(ctx)
+						])
+					}).then(L).catch(L);
+
+					return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+				})
+				.then(L).catch(L);
+			} else {
+				const imageURL = post?.url;
+				if (!imageURL) return L("Reddit no image");
+
+				ctx.replyWithPhoto(imageURL, {
+					caption: `${caption}\n<a href="${encodeURI(imageURL)}">Исходник файла</a>`,
+					disable_web_page_preview: true,
+					parse_mode: "HTML",
+					reply_markup: Markup.inlineKeyboard([
+						Markup.urlButton("Пост", postURL),
+						Markup.urlButton("Автор", `https://www.reddit.com/u/${author || "me"}`),
+						...GlobalSetLikeButtons(ctx)
+					])
+				})
 				.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
 					L(sentMessage);
 					return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
 				})
 				.then(L).catch(L);
-		} else
-			L("No media in Reddit post");
+			};
+		};
 	}).catch(L);
 };
 
