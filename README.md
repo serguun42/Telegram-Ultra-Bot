@@ -2,8 +2,9 @@
 #### Что умеет?
 
 * Скрывать спойлеры командой /spoiler.
-* Приветствовать новых пользователей.
 * Обрабатывать ссылки на ресурсы.
+* Приветствовать новых пользователей.
+* Добавлять кнопки оценок к сообщениям.
 
 #### Обработка ссылок на ресурсы
 
@@ -11,7 +12,7 @@
 * Твит (изображения, гифки и видео)
 * Иллюстрацию или мангу в Pixiv (изображения)
 * Пост в Instagram (изображения и видео)
-* Пост на Reddit (изображения и гифки)
+* Пост на Reddit (изображения, гифки и видео)
 * Пост на Danbooru (изображения)
 * Пост на Gelbooru (изображения)
 * Пост на Konachan (изображения)
@@ -40,6 +41,11 @@
 *Кхалиси*фицирует текст – работает на текст сообщения, на которое ответили командой `/khaleesi`.
 
 
+#### Команда /cheboratb
+
+Отвечает случайным стикером из заранее выбранного стикерпака.
+
+
 ## Конфигурация
 
 Всё указывается и настраивается в файле `animeultrabot.config.json`:
@@ -58,9 +64,11 @@
 * Telegraf
 * Twitter-lite
 * node-fetch
-* [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS) – ровно такой же модуль есть и в этом репозитории (нет в npm/yarn)
+* ffmpeg 
+* [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS) – ровно такой же модуль есть и в этом репозитории
 
 #### Полезные ссылки
 * [Telegraf Module for Node.js](https://telegraf.js.org/)
 * [Telegram Bots API](https://core.telegram.org/bots/api)
 * [Twitter API page for getting status](https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/get-statuses-show-id)
+* [ffmpeg Documentation](https://ffmpeg.org/ffmpeg.html)

@@ -12,7 +12,15 @@ const
 	Sessions = require("telegraf/session"),
 	Telegram = require("telegraf/telegram"),
 	Markup = require("telegraf/markup"),
-	KhaleesiModule = require("./animeultrabot.khaleesi.js");
+	KhaleesiModule = require("./animeultrabot.khaleesi.js"),
+	path = require("path"),
+	fs = require("fs"),
+	{ createWriteStream, createReadStream, stat } = fs,
+	{ promisify } = require("util"),
+	{ pipeline } = require("stream"),
+	streamPipeline = promisify(pipeline),
+	ffmpeg = require("ffmpeg"),
+	TEMP_FOLDER = DEV ? process.env["TEMP"] : "/tmp/";
 
 /**
  * @typedef {Object} WelcomeMessageText
@@ -88,7 +96,7 @@ const
 		"pickerlist": `
 • Твит (изображения, гифки и видео)
 • Иллюстрация или манга в Pixiv (изображения)
-• Пост на Reddit (изображения и гифки)
+• Пост на Reddit (изображения, гифки и видео)
 • Пост на Danbooru (изображения)
 • Пост на Gelbooru (изображения)
 • Пост на Konachan (изображения)
@@ -863,6 +871,75 @@ telegraf.action(/^DISLIKE_(\d+_\d+)/, /** @param {TelegramContext} ctx */ (ctx) 
 
 
 
+/**
+ * @param {String} iURL
+ * @returns {String}
+ */
+const GlobalGetDomain = iURL => {
+	try {
+		const url = URL.parse(iURL);
+		if (url.hostname) return url.hostname;
+		return iURL;
+	} catch (e) {
+		return iURL;
+	};
+};
+
+/**
+ * @param {String} video
+ * @param {String} audio
+ * @returns {Promise.<{ url?: string, filename?: string, onDoneCallback?: Function }, string>}
+ */
+const GlobalCombineVideo = (video, audio) => {
+	if (!video) return Promise.reject("No video URL");
+	if (!audio) return Promise.resolve({ url: video });
+
+
+	const videoBaseFilename = video.replace(/[^\d\w]+/gi, "") + Date.now(),
+		  videoFilename = path.resolve(TEMP_FOLDER, `${videoBaseFilename}_video`),
+		  videoFiletype = video.replace(/\?.*$/, "").match(/\.(\w+)$/)?.[1] || "mp4",
+		  audioFilename = path.resolve(TEMP_FOLDER, `${videoBaseFilename}_audio`),
+		  outFilename = path.resolve(TEMP_FOLDER, `${video.replace(/[^\d\w]+/gi, "") + Date.now()}_out.${videoFiletype}`);
+
+
+	const LocalDeleteTempFiles = () => {
+		fs.unlink(videoFilename, (e) => e && console.warn(e));
+		fs.unlink(audioFilename, (e) => e && console.warn(e));
+		fs.unlink(outFilename, (e) => e && console.warn(e));
+	};
+
+
+	return NodeFetch(video).then((response) => {
+		if (response.status !== 200)
+			return Promise.reject(`Response status on video (${video}) is ${response.status}`);
+
+		return streamPipeline(response.body, createWriteStream(videoFilename));
+	})
+	.then(() => NodeFetch(audio))
+	.then((response) => {
+		if (response.status !== 200)
+			return Promise.reject(`Response status on audio (${audio}) is ${response.status}`);
+
+		return streamPipeline(response.body, createWriteStream(audioFilename));
+	})
+	.then(() => new ffmpeg(videoFilename))
+	.then((video) => new Promise((resolve, reject) => {
+		video.addInput(audioFilename);
+		video.addCommand("-c:v", "copy");
+		video.addCommand("-c:a", "aac");
+		video.addCommand("-qscale", "0");
+		video.save(outFilename, (e) => {
+			if (e) return reject(e);
+
+			resolve({ filename: outFilename, onDoneCallback: () => LocalDeleteTempFiles() });
+		});
+	})).catch((e) => {
+		console.warn(e);
+		LocalDeleteTempFiles();
+		return Promise.resolve({ url: video });
+	});
+};
+
 
 
 
@@ -1049,8 +1126,6 @@ const ReplySpoiler = (ctx) => {
 		};
 	};
 };
-
-
 
 
 
@@ -1609,8 +1684,8 @@ const Pixiv = (text, ctx, url) => {
 const Reddit = (text, ctx, url) => {
 	if (!url.pathname) return;
 
-	const REDDIT_POST_REGEXP = /^(\/r\/[\w\d\-\._]+\/comments\/[\w\d\-\.]+)(\/)?/i;
-	const match = url.pathname.match(REDDIT_POST_REGEXP);
+	const REDDIT_POST_REGEXP = /^(\/r\/[\w\d\-\._]+\/comments\/[\w\d\-\.]+)(\/)?/i,
+		  match = url.pathname.match(REDDIT_POST_REGEXP);
 
 	if (!(match && match[1])) return;
 
@@ -1618,18 +1693,19 @@ const Reddit = (text, ctx, url) => {
 		  postURL = `https://www.reddit.com${match[1]}${match[2] || ""}`;
 
 
-	NodeFetch(postJSON, {
-		headers: {
-			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-			"Accept-Encoding": "gzip, deflate, br",
-			"Accept-Language": "en-US,en;q=0.9,ru;q=0.8",
-			"Cache-Control": "no-cache",
-			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36",
-			"Origin": "https://www.reddit.com",
-			"Pragma": "no-cache",
-			"referer": "https://www.reddit.com/"
-		}
-	}).then((res) => {
+	const DEFAULT_REDDIT_HEADERS = {
+		"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+		"Accept-Encoding": "gzip, deflate, br",
+		"Accept-Language": "en-US,en;q=0.9,ru;q=0.8",
+		"Cache-Control": "no-cache",
+		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36",
+		"Origin": "https://www.reddit.com",
+		"Pragma": "no-cache",
+		"referer": "https://www.reddit.com/"
+	};
+
+
+	NodeFetch(postJSON, { headers: DEFAULT_REDDIT_HEADERS }).then((res) => {
 		if (res.status == 200)
 			return res.json();
 		else
@@ -1646,24 +1722,82 @@ const Reddit = (text, ctx, url) => {
 
 
 		if (isVideo) {
-			const video = post?.secure_media?.reddit_video?.fallback_url;
+			const video = post?.secure_media?.reddit_video?.fallback_url,
+				  isGif = post?.secure_media?.reddit_video?.is_gif;
+
 			if (!video) return L("Reddit no video");
 
-			ctx.replyWithVideo(video, {
-				caption: `${caption}\n<a href="${encodeURI(video)}">Исходник видео</a>`,
-				disable_web_page_preview: true,
-				parse_mode: "HTML",
-				reply_markup: Markup.inlineKeyboard([
-					Markup.urlButton("Пост", postURL),
-					Markup.urlButton("Автор", `https://www.reddit.com/u/${author || "me"}`),
-					...GlobalSetLikeButtons(ctx)
-				])
-			})
-			.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
-				L(sentMessage);
-				return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
-			})
-			.then(L).catch(L);
+
+			new Promise((resolve) => {
+				if (isGif) return resolve({ url: video });
+
+				if (!post?.secure_media?.reddit_video?.hls_url) return resolve({ url: video });
+
+				const hslPlaylist = post.secure_media.reddit_video.hls_url;
+
+				return NodeFetch(hslPlaylist, {
+					headers: {
+						...DEFAULT_REDDIT_HEADERS,
+						host: GlobalGetDomain(hslPlaylist)
+					}
+				}).then((response) => {
+					if (response.status == 200)
+						return response.text();
+					else
+						return Promise.reject(`Response status from Reddit ${response.status}`);
+				}).then((hslFile) => {
+					const hslPlaylistLines = hslFile.split("\t"),
+						audioPlaylistLocation = hslPlaylistLines.filter((line) => /TYPE=AUDIO/i.test(line)).pop()?.match(/URI="([^"]+)"/)?.[1] || "";
+
+					return NodeFetch(hslPlaylist.replace(/\/[^\/]+$/, `/${audioPlaylistLocation}`), {
+						headers: {
+							...DEFAULT_REDDIT_HEADERS,
+							host: GlobalGetDomain(hslPlaylist)
+						}
+					});
+				}).then((response) => {
+					if (response.status == 200)
+						return response.text();
+					else
+						return Promise.reject(`Response status from Reddit ${response.status}`);
+				}).then((audioPlaylistFile) => {
+					const audioFilename = audioPlaylistFile.split("\n").filter((line) => line && !/^#/.test(line)).pop() || "",
+						audio = audioFilename.trim() ? hslPlaylist.replace(/\/[^\/]+$/, `/${audioFilename}`) : "";
+
+					if (!audio) return resolve({ url: video });
+
+					GlobalCombineVideo(video, audio)
+						.then(({ url, filename, onDoneCallback }) => {
+							if (filename)
+								resolve({ filename, onDoneCallback, audioSource: audio });
+							else
+								resolve({ url: video })
+						})
+						.catch(() => resolve({ url: video }));
+				}).catch(() => resolve({ url: video }));
+			}).then(
+				/** @param {{url?: String, filename?: String, onDoneCallback?: Function, audioSource?: string}} */
+				({ url, filename, onDoneCallback, audioSource }) => {
+					ctx.replyWithVideo(filename ? {
+						source: createReadStream(filename)
+					} : url, {
+						caption: `${caption}\n<a href="${encodeURI(video)}">Исходник видео</a>${audioSource ? `, <a href="${encodeURI(audioSource)}">исходник аудио</a>` : ""}`,
+						disable_web_page_preview: true,
+						parse_mode: "HTML",
+						reply_markup: Markup.inlineKeyboard([
+							Markup.urlButton("Пост", postURL),
+							Markup.urlButton("Автор", `https://www.reddit.com/u/${author || "me"}`),
+							...GlobalSetLikeButtons(ctx)
+						])
+					})
+					.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+						if (onDoneCallback) onDoneCallback();
+						L(sentMessage);
+						return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+					})
+					.then(L).catch(console.warn);
+				}
+			).catch(console.warn);
 		} else {
 			if (isGallery) {
 				const mediaURLs = post?.gallery_data?.items?.map((item) => post?.media_metadata?.[item.media_id]?.s?.u).map((mediaURL) => {
@@ -1720,7 +1854,6 @@ const Reddit = (text, ctx, url) => {
 		};
 	}).catch(L);
 };
-
 /**
  * @param {String} text
  * @param {TelegramContext} ctx
