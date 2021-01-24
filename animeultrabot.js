@@ -903,9 +903,9 @@ const GlobalCombineVideo = (video, audio) => {
 
 
 	const LocalDeleteTempFiles = () => {
-		fs.unlink(videoFilename, (e) => e && console.warn(e));
-		fs.unlink(audioFilename, (e) => e && console.warn(e));
-		fs.unlink(outFilename, (e) => e && console.warn(e));
+		fs.unlink(videoFilename, (e) => e && L(e));
+		fs.unlink(audioFilename, (e) => e && L(e));
+		fs.unlink(outFilename, (e) => e && L(e));
 	};
 
 
@@ -934,7 +934,7 @@ const GlobalCombineVideo = (video, audio) => {
 			resolve({ filename: outFilename, onDoneCallback: () => LocalDeleteTempFiles() });
 		});
 	})).catch((e) => {
-		console.warn(e);
+		L(e);
 		LocalDeleteTempFiles();
 		return Promise.resolve({ url: video });
 	});
@@ -1795,42 +1795,125 @@ const Reddit = (text, ctx, url) => {
 						L(sentMessage);
 						return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
 					})
-					.then(L).catch(console.warn);
+					.then(L).catch(L);
 				}
-			).catch(console.warn);
+			).catch(L);
 		} else {
 			if (isGallery) {
-				const mediaURLs = post?.gallery_data?.items?.map((item) => post?.media_metadata?.[item.media_id]?.s?.u).map((mediaURL) => {
-					try {
-						let url = URL.parse(mediaURL);
+				/** @type {{filetype: string, url: string}[]} */
+				const galleryMedias = post?.gallery_data?.items
+					?.map((item) => {
+						const isGalleryMediaGif = !!post?.media_metadata?.[item.media_id]?.s?.gif;
 
-						return `https://${url.hostname.replace(/^preview\./i, "i.")}${url.pathname}`;
-					} catch (e) {
-						return "";
+						if (isGalleryMediaGif)
+							return {
+								filetype: "gif",
+								url: post?.media_metadata?.[item.media_id]?.s?.gif
+							};
+
+						try {
+							const url = URL.parse(post?.media_metadata?.[item.media_id]?.s?.u),
+								  filetype = url.pathname.match(/\.([\w]+)$/i)?.[1] || "jpeg";
+
+							return {
+								filetype: (filetype === "jpg" ? "jpeg" : filetype),
+								url: `https://${url.hostname.replace(/^preview\./i, "i.")}${url.pathname}`
+							};
+						} catch (e) {
+							return false;
+						};
+					})
+					.filter((galleryMedia) => !!galleryMedia);
+
+				if (!galleryMedias || !galleryMedias.length) return L("Reddit no gallery");
+
+
+				const imagesToSend = galleryMedias
+										.filter((galleryMedia) => galleryMedia.filetype !== "gif")
+										.map((galleryMedia) => ({
+											type: "photo",
+											media: galleryMedia.url
+										})).slice(0, 10),
+					  gifsToSend = galleryMedias
+										.filter((galleryMedia) => galleryMedia.filetype === "gif")
+										.map((galleryMedia) => ({
+											type: "animation",
+											media: galleryMedia.url
+										}));
+
+
+				new Promise((resolve, reject) => {
+					let stillLoading = true,
+						counterOfSentMedia = 0,
+						lastSentMessageId = -1;
+
+					const LocalDoneSendingMedias = () => {
+						if (counterOfSentMedia === imagesToSend.length + gifsToSend.length)
+							resolve(lastSentMessageId);
 					};
-				}).filter((mediaURL) => !!mediaURL);
+					
+					if (imagesToSend.length >= 2) {
+						if (!stillLoading) return;
 
-				if (!mediaURLs || !mediaURLs.length) return L("Reddit no gallery");
+						ctx.replyWithMediaGroup(imagesToSend)
+						.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+							if (!stillLoading) return;
+
+							counterOfSentMedia += imagesToSend.length;
+							lastSentMessageId = sentMessage.message_id;
+							LocalDoneSendingMedias();
+						}).catch((e) => {
+							stillLoading = false;
+							reject(e);
+						});
+					} else if (imagesToSend.length === 1) {
+						if (!stillLoading) return;
+
+						ctx.replyWithPhoto(imagesToSend[0].media)
+						.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+							if (!stillLoading) return;
+
+							++counterOfSentMedia;
+							lastSentMessageId = sentMessage.message_id;
+							LocalDoneSendingMedias();
+						}).catch((e) => {
+							stillLoading = false;
+							reject(e);
+						});
+					};
 
 
-				ctx.replyWithMediaGroup(mediaURLs.map((mediaURL) => ({ type: "photo", media: mediaURL })))
-				.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
-					L(sentMessage);
+					if (gifsToSend.length) {
+						gifsToSend.forEach((gifToSend) => {
+							if (!stillLoading) return;
 
-					ctx.reply(`${caption}\nФайлы: ${mediaURLs.map((mediaURL, index) => `<a href="${encodeURI(mediaURL)}">${index + 1}</a>`).join(", ")}`, {
+							ctx.replyWithAnimation(gifToSend.media)
+							.then(/** @param {TelegramMessageObject} sentMessage */ (sentMessage) => {
+								if (!stillLoading) return;
+
+								++counterOfSentMedia;
+								lastSentMessageId = sentMessage.message_id;
+								LocalDoneSendingMedias();
+							}).catch((e) => {
+								stillLoading = false;
+								reject(e);
+							});
+						});
+					};
+				}).then(/** @param {Number} messageIdToReply */ (messageIdToReply) => {
+					ctx.reply(`${caption}\nФайлы: ${galleryMedias.map((galleryMedia, index) => `<a href="${encodeURI(galleryMedia.url)}">${index + 1}</a>`).join(", ")}`, {
 						disable_web_page_preview: true,
 						parse_mode: "HTML",
-						reply_to_message_id: sentMessage.message_id,
+						reply_to_message_id: messageIdToReply,
 						reply_markup: Markup.inlineKeyboard([
 							Markup.urlButton("Пост", postURL),
 							Markup.urlButton("Автор", `https://www.reddit.com/u/${author || "me"}`),
 							...GlobalSetLikeButtons(ctx)
 						])
-					}).then(L).catch(L);
+					}).catch(L);
 
 					return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
-				})
-				.then(L).catch(L);
+				}).catch(L);
 			} else {
 				const imageURL = post?.url;
 				if (!imageURL) return L("Reddit no image");
