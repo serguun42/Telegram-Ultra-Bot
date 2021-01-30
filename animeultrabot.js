@@ -104,6 +104,7 @@ const
 • Пост на Sankaku Channel (изображения)
 • Пост на Zerochan (изображения)
 • Пост на Anime-Pictures.net (изображения)
+• Nitter – тоже самое, что и Twitter
 • Пост на Joy, <i>прости Господи</i>, реактор (изображения)
 • Прямая ссылка на изображение в Твиттере`,
 		"aboutspoiler": `Ты можешь:
@@ -296,7 +297,7 @@ telegraf.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 
 
-		const commandMatch = text.match(/^\/([\w]+)$/i);
+		const commandMatch = text.match(/^\/([\w]+)(\@animeultrabot)?$/i);
 
 		if (commandMatch && commandMatch[1]) {
 			L({commandMatch});
@@ -1152,6 +1153,12 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 		url.host == "twitter.com" |
 		url.host == "www.twitter.com" |
 		url.host == "mobile.twitter.com"
+	)
+		return resolve({ status: true, platform: Twitter, url });
+	else if (
+		url.host == "nitter.net" |
+		url.host == "www.nitter.net" |
+		url.host == "mobile.nitter.net"
 	)
 		return resolve({ status: true, platform: Twitter, url });
 	else if (
