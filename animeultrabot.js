@@ -1295,14 +1295,14 @@ const Twitter = (text, ctx, url) => {
 			.catch(LogMessageOrError);
 		} else {
 			/**
-			 * @param {String} iPostfixToTryWith
+			 * @param {"url" | "buffer"} iMethod
 			 * @returns {Promise}
 			 */
-			const LocalTryWithPostfix = (iPostfixToTryWith) => {
+			const LocalTryMethod = (iMethod) => {
 				/** @type {{type: String, media: String}[]} */
 				const sourcesArr = MEDIA.map((media) => {
 					if (media["type"] === "photo") {
-						return { type: "photo", media: media["media_url_https"] + iPostfixToTryWith };
+						return { type: "photo", media: media["media_url_https"] + ":orig" };
 					} else if (media["type"] === "video") {
 						const variants = media["video_info"]["variants"].filter(i => (!!i && i.hasOwnProperty("bitrate")));
 
@@ -1320,39 +1320,74 @@ const Twitter = (text, ctx, url) => {
 						return false;
 				}).filter(i => !!i);
 
-				
+
+				const imageLinksForUsers = sourcesArr.map((source) => encodeURI(source.media.replace(/(\:\w+)?$/, ":orig")))
+
 				const currentCaptionPostfix = (
 					sourcesArr.length === 1 ?
 						`\n<a href="${encodeURI(sourcesArr[0].media.replace(/(\:\w+)?$/, ":orig"))}">Исходник файла</a>`
 					:
-						"\nФайлы: " + sourcesArr.map((s, i) => `<a href="${encodeURI(s.media.replace(/(\:\w+)?$/, ":orig"))}">${i + 1}</a>`).join(", ")
+						"\nФайлы: " + imageLinksForUsers.map((link, linkIndex) => `<a href="${link}">${linkIndex + 1}</a>`).join(", ")
 				);
 
 
-				if (sourcesArr.length === 1) {
-					return ctx.replyWithPhoto(sourcesArr[0].media, {
-						caption: caption + currentCaptionPostfix,
-						disable_web_page_preview: true,
-						parse_mode: "HTML",
-						reply_markup: Telegraf.Markup.inlineKeyboard([
-							{
-								text: "Твит",
-								url: text
-							},
-							{
-								text: "Автор",
-								url: "https://twitter.com/" + tweet["user"]["screen_name"]
-							},
-							...GlobalSetLikeButtons(ctx)
-						]).reply_markup
-					});
-				} else {
-					return ctx.replyWithMediaGroup(sourcesArr)
-						.then((sentMessage) => {
-							ctx.reply(caption + currentCaptionPostfix, {
+				if (iMethod === "url") {
+					if (sourcesArr.length === 1) {
+						return ctx.replyWithPhoto(sourcesArr[0].media, {
+							caption: caption + currentCaptionPostfix,
+							disable_web_page_preview: true,
+							parse_mode: "HTML",
+							reply_markup: Telegraf.Markup.inlineKeyboard([
+								{
+									text: "Твит",
+									url: text
+								},
+								{
+									text: "Автор",
+									url: "https://twitter.com/" + tweet["user"]["screen_name"]
+								},
+								...GlobalSetLikeButtons(ctx)
+							]).reply_markup
+						});
+					} else {
+						return ctx.replyWithMediaGroup(sourcesArr.map((source, sourceIndex) => ({
+								media: source.media,
+								type: source.type,
+								caption: `<a href="${imageLinksForUsers[sourceIndex]}">Исходник файла</a>`,
+								parse_mode: "HTML"
+							})))
+							.then((sentMessage) => {
+								ctx.reply(caption + currentCaptionPostfix, {
+									disable_web_page_preview: true,
+									parse_mode: "HTML",
+									reply_to_message_id: sentMessage.message_id,
+									reply_markup: Telegraf.Markup.inlineKeyboard([
+										{
+											text: "Твит",
+											url: text
+										},
+										{
+											text: "Автор",
+											url: "https://twitter.com/" + tweet["user"]["screen_name"]
+										},
+										...GlobalSetLikeButtons(ctx)
+									]).reply_markup
+								}).catch(LogMessageOrError);
+							});
+					};
+				} else if (iMethod === "buffer") {
+					return Promise.all(
+						sourcesArr.map((source) => 
+							NodeFetch(source.media).then((media) => media.buffer())
+						)
+					).then(/** @param {Buffer[]} mediaBuffers */ (mediaBuffers) => {
+						if (sourcesArr.length === 1) {
+							return ctx.replyWithPhoto({
+								source: mediaBuffers[0]
+							}, {
+								caption: caption + currentCaptionPostfix,
 								disable_web_page_preview: true,
 								parse_mode: "HTML",
-								reply_to_message_id: sentMessage.message_id,
 								reply_markup: Telegraf.Markup.inlineKeyboard([
 									{
 										text: "Твит",
@@ -1364,16 +1399,42 @@ const Twitter = (text, ctx, url) => {
 									},
 									...GlobalSetLikeButtons(ctx)
 								]).reply_markup
-							}).catch(LogMessageOrError);
-						});
+							});
+						} else {
+							return ctx.replyWithMediaGroup(sourcesArr.map((source, sourceIndex) => ({
+								media: { source: mediaBuffers[sourceIndex] },
+								type: source.type,
+								caption: `<a href="${imageLinksForUsers[sourceIndex]}">Исходник файла</a>`,
+								parse_mode: "HTML"
+							})))
+							.then((sentMessage) => {
+								ctx.reply(caption + currentCaptionPostfix, {
+									disable_web_page_preview: true,
+									parse_mode: "HTML",
+									reply_to_message_id: sentMessage.message_id,
+									reply_markup: Telegraf.Markup.inlineKeyboard([
+										{
+											text: "Твит",
+											url: text
+										},
+										{
+											text: "Автор",
+											url: "https://twitter.com/" + tweet["user"]["screen_name"]
+										},
+										...GlobalSetLikeButtons(ctx)
+									]).reply_markup
+								}).catch(LogMessageOrError);
+							});
+						};
+					});
 				};
 			};
 
 
-			LocalTryWithPostfix(":orig")
+			LocalTryMethod("url")
 			.then(() => telegram.deleteMessage(ctx.chat.id, ctx.message.message_id))
 			.catch(() => {
-				LocalTryWithPostfix("")
+				LocalTryMethod("buffer")
 				.then(() => telegram.deleteMessage(ctx.chat.id, ctx.message.message_id))
 				.catch(LogMessageOrError)
 			});
@@ -1464,6 +1525,7 @@ const Instagram = (text, ctx, url) => {
 		});
 
 
+		/** @type {{type: String, media: String}[]} */
 		const sourcesArr = post?.edge_sidecar_to_children?.edges.map((edge) => {
 			if (!edge.node) return null;
 
@@ -1529,28 +1591,33 @@ const Instagram = (text, ctx, url) => {
 			.then(() => telegram.deleteMessage(ctx.chat.id, ctx.message.message_id))
 			.catch(LogMessageOrError);
 		} else {
-			ctx.replyWithMediaGroup(sourcesArr)
-				.then((sentMessage) => {
-					ctx.reply(caption, {
-						disable_web_page_preview: true,
-						parse_mode: "HTML",
-						reply_to_message_id: sentMessage.message_id,
-						reply_markup: Telegraf.Markup.inlineKeyboard([
-							{
-								text: "Пост",
-								url: text
-							},
-							{
-								text: "Автор",
-								url: author
-							},
-							...GlobalSetLikeButtons(ctx)
-						]).reply_markup
-					}).catch(LogMessageOrError);
+			ctx.replyWithMediaGroup(sourcesArr.map((source) => ({
+				media: source.media,
+				type: source.type,
+				caption: `<a href="${encodeURI(source.media)}">Исходник файла</a>`,
+				parse_mode: "HTML"
+			})))
+			.then((sentMessage) => {
+				ctx.reply(caption, {
+					disable_web_page_preview: true,
+					parse_mode: "HTML",
+					reply_to_message_id: sentMessage.message_id,
+					reply_markup: Telegraf.Markup.inlineKeyboard([
+						{
+							text: "Пост",
+							url: text
+						},
+						{
+							text: "Автор",
+							url: author
+						},
+						...GlobalSetLikeButtons(ctx)
+					]).reply_markup
+				}).catch(LogMessageOrError);
 
-					return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
-				})
-				.catch(LogMessageOrError);
+				return telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+			})
+			.catch(LogMessageOrError);
 		};
 	})
 	.catch(LogMessageOrError);
@@ -1601,9 +1668,14 @@ const Pixiv = (text, ctx, url) => {
 
 		const post = data["illust"][Object.keys(data["illust"])[0]];
 
-		let sourcesAmount = post["pageCount"],
-			sourcesOrig = new Array(),
-			sourcesForTG = new Array();
+		/** @type {Number} */
+		const sourcesAmount = post["pageCount"];
+
+		/** @type {{type: String, media: String}[]} */
+		const sourcesOrig = new Array();
+
+		/** @type {{type: String, media: String}[]} */
+		const sourcesForTG = new Array();
 
 
 		for (let i = 0; i < sourcesAmount; i++) {
@@ -1640,10 +1712,20 @@ const Pixiv = (text, ctx, url) => {
 		if (sourcesAmount > 10)
 			caption += ` ⬅️ Перейди по ссылке: ${sourcesAmount} ${GetForm(sourcesAmount, ["иллюстрация", "иллюстрации", "иллюстраций"])} не влезли в сообщение`;
 
+
+		const imageLinksForUsers = sourcesOrig.map((source) =>
+			CUSTOM_IMG_VIEWER_SERVICE
+				.replace(/__LINK__/, encodeURIComponent(source.media))
+				.replace(/__HEADERS__/, encodeURIComponent(
+					JSON.stringify({ Referer: "http://www.pixiv.net/" })
+				))
+			);
+
+
 		if (sourcesAmount === 1)
-			caption += `\n<a href="${CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, encodeURIComponent(sourcesOrig[0].media)).replace(/__HEADERS__/, encodeURIComponent(JSON.stringify({Referer: "http://www.pixiv.net/"})))}">Исходник файла</a>`;
+			caption += `\n<a href="${imageLinksForUsers[0]}">Исходник файла</a>`;
 		else
-			caption += "\nФайлы: " + sourcesOrig.map((s, i) => `<a href="${CUSTOM_IMG_VIEWER_SERVICE.replace(/__LINK__/, encodeURIComponent(s.media)).replace(/__HEADERS__/, encodeURIComponent(JSON.stringify({Referer: "http://www.pixiv.net/"})))}">${i + 1}</a>`).join(", ");
+			caption += "\nФайлы: " + imageLinksForUsers.map((link, linkIndex) => `<a href="${link}">${linkIndex + 1}</a>`).join(", ");
 
 
 		if (sourcesForTG.length === 1) {
@@ -1666,7 +1748,12 @@ const Pixiv = (text, ctx, url) => {
 			.then(() => telegram.deleteMessage(ctx.chat.id, ctx.message.message_id))
 			.catch(LogMessageOrError);
 		} else {
-			ctx.replyWithMediaGroup(sourcesForTG.slice(0, 10))
+			ctx.replyWithMediaGroup(sourcesForTG.slice(0, 10).map((source, sourceIndex) => ({
+				media: source.media,
+				type: source.type,
+				caption: `<a href="${imageLinksForUsers[sourceIndex]}">Исходник файла</a>`,
+				parse_mode: "HTML"
+			})))
 			.then((sentMessage) => {
 				ctx.reply(caption, {
 					disable_web_page_preview: true,
@@ -1877,7 +1964,12 @@ const Reddit = (text, ctx, url) => {
 					if (imagesToSend.length >= 2) {
 						if (!stillLoading) return;
 
-						ctx.replyWithMediaGroup(imagesToSend)
+						ctx.replyWithMediaGroup(imagesToSend.map((source) => ({
+							media: source.media,
+							type: source.type,
+							caption: `<a href="${encodeURI(source.media)}">Исходник файла</a>`,
+							parse_mode: "HTML"
+						})))
 						.then((sentMessage) => {
 							if (!stillLoading) return;
 
