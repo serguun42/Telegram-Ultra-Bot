@@ -67,6 +67,25 @@
 * ffmpeg 
 * [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS) – ровно такой же модуль есть и в этом репозитории
 
+#### Установка всего необходимого
+```
+npm install
+```
+
+#### Запуск бота
+```
+npm run start_bot
+```
+
+#### Запуск по-другому
+```
+node animeultrabot.js
+```
+или
+```
+pm2 start animeultrabot.js
+```
+
 #### Полезные ссылки
 * [Telegraf Module for Node.js](https://telegraf.js.org/)
 * [Telegram Bots API](https://core.telegram.org/bots/api)

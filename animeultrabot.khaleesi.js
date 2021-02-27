@@ -7,8 +7,8 @@ const KhaleesiPostCorrection = {
 		let result = new Array();
 
 		iWords.forEach((word) => {
-			if (word.length < 2) return result.push(word)
-			
+			if (word.length < 2) return result.push(word);
+
 			if (/ийи/gi.test(word))
 				return result.push(word.replace(/(и)й(и)/gi, "$1$2"));
 
@@ -23,7 +23,6 @@ const KhaleesiPostCorrection = {
 		return result;
 	},
 
-	
 	/**
 	 * @param {String} word
 	 * @returns {String}
@@ -31,7 +30,7 @@ const KhaleesiPostCorrection = {
 	randomMixWord: (word) => {
 		let mixedUpRules = KhaleesiPostCorrection.POST_CORRECTION_RULES.slice(0);
 
-		for (let i = mixedUpRules.length - 1; i > 0; i--){
+		for (let i = mixedUpRules.length - 1; i > 0; i--) {
 			let j = Math.floor(Math.random() * i);
 			[mixedUpRules[i], mixedUpRules[j]] = [mixedUpRules[j], mixedUpRules[i]];
 		};
@@ -44,7 +43,6 @@ const KhaleesiPostCorrection = {
 
 		return word;
 	},
-
 
 	WHATS: [
 		"чьто", "сто", "шьто", "што"
@@ -355,6 +353,8 @@ const KhaleesiEngine = {
 };
 
 /**
+ * При необходимости заменяем на `const Khaleesi`
+ * 
  * @param {String} iMessage
  * @returns {String}
  */
