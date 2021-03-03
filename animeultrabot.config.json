@@ -34,6 +34,18 @@
 					"caption": "Добро пожаловать в наш клуб! Во что играешь?"
 				}
 			}
+		},
+		{
+			"id": -123456789000000000003,
+			"name": "4TH CHAT",
+			"enabled": true,
+			"welcome": {
+				"type": "gif",
+				"message": {
+					"filename": "./resources/abcdef123456790000000000000000000000.mp4",
+					"caption": "Добро пожаловать в наш клуб! Во что играешь?"
+				}
+			}
 		}
 	],
 	"COMMANDS_WHITELIST": [
@@ -50,6 +62,12 @@
 	],
 	"LIKES_STATS_CHANNEL_ID": -123456789000000000099,
 	"SPECIAL_STICKERS_SET": "your_stickers_set_name",
+	"SPECIAL_PHRASE_STICKER": {
+		"file_id": "AAAAAAAAAAAAAAAAA-BBBBBBBBBBBBBBBBBBBBB-CCCCCCCCCCCCC-123456789"
+	},
+	"SPECIAL_PHRASE_GIF": {
+		"filename": "./resources/bbbbbbbbbbbbbbbbeeeeeeeeeeee1234567890.mp4"
+	},
 	"EMPTY_QUERY_IMG": "https://yourservice.io/spoiler_inline_empty.png",
 	"DONE_QUERY_IMG": "https://yourservice.io/spoiler_inline_filled.png"
 }

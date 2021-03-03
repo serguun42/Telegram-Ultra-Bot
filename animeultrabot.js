@@ -22,7 +22,7 @@ const
  * 
  * @typedef {Object} WelcomeMessageGIF
  * @property {"gif"} type
- * @property {{file_id: string, caption?: string}} message
+ * @property {{filename?: string, file_id: string, caption?: string}} message
  */
 /**
  * @typedef {Object} ConfigFile
@@ -37,6 +37,8 @@ const
  * @property {String[]} MARKS_WHITELIST
  * @property {String[] | Number[]} BLACKLIST
  * @property {Number} LIKES_STATS_CHANNEL_ID
+ * @property {{filename: String} | {file_id: String}} SPECIAL_PHRASE_STICKER
+ * @property {{filename: String} | {file_id: String}} SPECIAL_PHRASE_GIF
  * @property {String} SPECIAL_STICKERS_SET
  * @property {String} EMPTY_QUERY_IMG
  * @property {String} DONE_QUERY_IMG
@@ -56,6 +58,8 @@ const
 		MARKS_WHITELIST,
 		BLACKLIST,
 		LIKES_STATS_CHANNEL_ID,
+		SPECIAL_PHRASE_STICKER,
+		SPECIAL_PHRASE_GIF,
 		SPECIAL_STICKERS_SET,
 		EMPTY_QUERY_IMG,
 		DONE_QUERY_IMG
@@ -256,6 +260,7 @@ telegraf.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 		LogMessageOrError(`Private chat with user ${from.id} (@${from.username || "NO_USERNAME"}) – ${new Date().toISOString()}. Text: ${message["text"]}`);
 
+		/** @type {String} */
 		const text = message["text"];
 		if (!text) return false;
 
@@ -265,8 +270,8 @@ telegraf.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 		if (from["username"] === ADMIN_TELEGRAM_DATA.username) {
 			if (text.match(/^\/god (0|1)$/i)) {
-				let mode = text.match(/^\/god (0|1)$/i)[1];
-				godModeEnabled = (mode === "1");
+				const modeFromAdmin = text.match(/^\/god (0|1)$/i)[1];
+				godModeEnabled = (modeFromAdmin === "1");
 
 				TelegramSendToAdmin(JSON.stringify({ godModeEnabled }, false, "\t"));
 				return false;
@@ -339,16 +344,23 @@ telegraf.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 				if (Math.random() < 0.33) {
 					return ctx.reply("<i>…как Орлов, порхай как бабочка!</i>", {
 						parse_mode: "HTML",
-						reply_to_message_id: message.message_id
+						reply_to_message_id: message.message_id,
+						allow_sending_without_reply: true
 					}).catch(LogMessageOrError);
 				} else {
 					if (Math.random() < 0.5)
-						return ctx.replyWithSticker("CAACAgIAAx0CU5r_5QACCFlejL-ACp0b5UFZppv4rFVWZ9lZGwAChQYAAiMhBQABqCwuoKvunScYBA", {
-							reply_to_message_id: message.message_id
+						return ctx.replyWithSticker(SPECIAL_PHRASE_STICKER.file_id || {
+							source: createReadStream(SPECIAL_PHRASE_STICKER.filename)
+						}, {
+							reply_to_message_id: message.message_id,
+							allow_sending_without_reply: true
 						}).catch(LogMessageOrError);
 					else
-						return ctx.replyWithAnimation("CgACAgIAAxkBAAIWpl-6h0sKFMfsMOOECb6M3kjr34vjAALMBwACaeiYSYFBpLc63EZvHgQ", {
-							reply_to_message_id: message.message_id
+						return ctx.replyWithAnimation(SPECIAL_PHRASE_GIF.file_id || {
+							source: createReadStream(SPECIAL_PHRASE_GIF.filename)
+						}, {
+							reply_to_message_id: message.message_id,
+							allow_sending_without_reply: true
 						}).catch(LogMessageOrError);
 				};
 			};
@@ -424,14 +436,18 @@ telegraf.on("new_chat_members", /** @param {TelegramContext} ctx */ (ctx) => {
 			ctx.reply(welcome.message.replace("__USERNAME__", GetUsername(message.new_chat_member || message.new_chat_members[0])), {
 				parse_mode: "HTML",
 				disable_web_page_preview: true,
-				reply_to_message_id: message.message_id
+				reply_to_message_id: message.message_id,
+				allow_sending_without_reply: true
 			}).catch(LogMessageOrError);
 		} else if (welcome.type == "gif") {
-			ctx.replyWithAnimation(welcome.message.file_id, {
+			ctx.replyWithAnimation(welcome.message.filename ? {
+				source: createReadStream(welcome.message.filename)
+			} : welcome.message.file_id, {
 				caption: welcome.message.caption ? welcome.message.caption.replace("__USERNAME__", GetUsername(message.new_chat_member || message.new_chat_members[0])) : "",
 				parse_mode: "HTML",
 				disable_web_page_preview: true,
-				reply_to_message_id: message.message_id
+				reply_to_message_id: message.message_id,
+				allow_sending_without_reply: true
 			}).catch(LogMessageOrError);
 		};
 	});
@@ -462,7 +478,8 @@ const Khaleesi = (ctx) => {
 	if (!khaleesiedText) return;
 
 	ctx.reply(khaleesiedText, {
-		reply_to_message_id: replyingMessage.message_id
+		reply_to_message_id: replyingMessage.message_id,
+		allow_sending_without_reply: true
 	}).catch(LogMessageOrError);
 };
 
@@ -508,6 +525,7 @@ const SetLikes = (ctx) => {
 		disable_web_page_preview: true,
 		parse_mode: "HTML",
 		reply_to_message_id: replyingMessage.message_id,
+		allow_sending_without_reply: true,
 		reply_markup: Telegraf.Markup.inlineKeyboard(GlobalSetLikeButtons(ctx)).reply_markup
 	}).catch(LogMessageOrError);
 };
@@ -1214,7 +1232,7 @@ const Twitter = (text, ctx, url) => {
 		tweet_mode: "extended"
 	})
 	.then((tweet) => {
-		const MEDIA = tweet["extended_entities"]["media"];
+		const MEDIA = tweet["extended_entities"]?.["media"];
 
 		if (!MEDIA) return;
 		if (!MEDIA.length) return;
@@ -1361,6 +1379,7 @@ const Twitter = (text, ctx, url) => {
 									disable_web_page_preview: true,
 									parse_mode: "HTML",
 									reply_to_message_id: sentMessage.message_id,
+									allow_sending_without_reply: true,
 									reply_markup: Telegraf.Markup.inlineKeyboard([
 										{
 											text: "Твит",
@@ -1412,6 +1431,7 @@ const Twitter = (text, ctx, url) => {
 									disable_web_page_preview: true,
 									parse_mode: "HTML",
 									reply_to_message_id: sentMessage.message_id,
+									allow_sending_without_reply: true,
 									reply_markup: Telegraf.Markup.inlineKeyboard([
 										{
 											text: "Твит",
@@ -1602,6 +1622,7 @@ const Instagram = (text, ctx, url) => {
 					disable_web_page_preview: true,
 					parse_mode: "HTML",
 					reply_to_message_id: sentMessage.message_id,
+					allow_sending_without_reply: true,
 					reply_markup: Telegraf.Markup.inlineKeyboard([
 						{
 							text: "Пост",
@@ -1759,6 +1780,7 @@ const Pixiv = (text, ctx, url) => {
 					disable_web_page_preview: true,
 					parse_mode: "HTML",
 					reply_to_message_id: sentMessage.message_id,
+					allow_sending_without_reply: true,
 					reply_markup: Telegraf.Markup.inlineKeyboard([
 						{
 							text: "Пост",
@@ -2019,6 +2041,7 @@ const Reddit = (text, ctx, url) => {
 						disable_web_page_preview: true,
 						parse_mode: "HTML",
 						reply_to_message_id: messageIdToReply,
+						allow_sending_without_reply: true,
 						reply_markup: Telegraf.Markup.inlineKeyboard([
 							{
 								text: "Пост",
