@@ -4,6 +4,7 @@
 	"TWITTER_CONSUMER_SECRET": "BBBBBBBBBBBbbbbbbbbbbBBBBBBBBBBBBBBBBBBB",
 	"CUSTOM_IMG_VIEWER_SERVICE": "__LINK__ заменяется на ссылку поста. __HEADERS__ заменяется на HTTP-заголовок \"Referer\" со значением равным \"http://pixiv.net\" в случае Пиксива и на адрес поста в случае anime.reactor.cc",
 	"INSTAGRAM_COOKIE": "Куки из instagram.com для любого активного и залогиненного аккаунта. Пример: ig_did=123456789; mid=123456789; shbid=123456789; shbts=123456789; rur=ASD; ig_nrcb=123; csrftoken=123456789ABCDEF; ds_user_id=123456789; sessionid=123456789%A%BCDEF; urlgen=\"{\\\"127.0.0.1\\\": 123456\\054 \\\"127.0.0.1\\\": 123456}:123456789:123456789_ABCDEF\"",
+	"BOT_USERNAME": "animebot_cool_username",
 	"ADMIN_TELEGRAM_DATA": {
 		"id": 123456789000000000000,
 		"username": "admin_username"
@@ -69,5 +70,6 @@
 		"filename": "./resources/bbbbbbbbbbbbbbbbeeeeeeeeeeee1234567890.mp4"
 	},
 	"EMPTY_QUERY_IMG": "https://yourservice.io/spoiler_inline_empty.png",
-	"DONE_QUERY_IMG": "https://yourservice.io/spoiler_inline_filled.png"
+	"DONE_QUERY_IMG": "https://yourservice.io/spoiler_inline_filled.png",
+	"LOCAL_SERVER_PORT": 8081
 }

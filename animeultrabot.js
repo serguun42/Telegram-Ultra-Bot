@@ -26,7 +26,8 @@ const
 		SPECIAL_PHRASE_GIF,
 		SPECIAL_STICKERS_SET,
 		EMPTY_QUERY_IMG,
-		DONE_QUERY_IMG
+		DONE_QUERY_IMG,
+		LOCAL_SERVER_PORT
 	} = CONFIG,
 	COMMANDS_USAGE = new Object(),
 	COMMANDS = {
@@ -46,7 +47,7 @@ const
 
 const telegraf = new Telegraf(TELEGRAM_BOT_TOKEN, DEV ? {} : {
 	telegram: {
-		apiRoot: "http://localhost:"
+		apiRoot: `http://127.0.0.1:${LOCAL_SERVER_PORT}`
 	}
 });
 const telegram = telegraf.telegram;
