@@ -193,7 +193,7 @@ const Instagram = (url) => {
 		if (res.status == 200)
 			return res.json();
 		else
-			return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+			return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 	})
 	.then((graphData) => {
 		const post = graphData?.graphql?.shortcode_media;
@@ -263,10 +263,10 @@ const Pixiv = (url) => {
 
 	if (CHECK_REGEXP.test(url.href)) {
 		pixivID = url.href.match(CHECK_REGEXP)[4];
-	} else if (ParseQuery(url.query)["illust_id"])
-		pixivID = ParseQuery(url.query)["illust_id"];
+	} else if (ParseQuery(url.search)["illust_id"])
+		pixivID = ParseQuery(url.search)["illust_id"];
 
-	if (!pixivID) return;
+	if (!pixivID) return new Promise.resolve({});
 
 
 	const postURL = `https://www.pixiv.net/en/artworks/${pixivID}`;
@@ -275,7 +275,7 @@ const Pixiv = (url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+			return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${postURL}`));
 	}).then((rawPixivHTML) => {
 		let data;
 		try {
@@ -302,7 +302,7 @@ const Pixiv = (url) => {
 		/** @type {Media[]} */
 		const medias = new Array();
 
-		if (!post) return Promise.resolve({});
+		if (!post) return Promise.resolve(new Error("No Pivix post", rawPixivHTML));
 
 
 		for (let i = 0; i < sourcesAmount; i++) {
@@ -374,7 +374,7 @@ const Reddit = (url) => {
 			if (res.status == 200)
 				return res.json();
 			else
-				return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+				return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 		}).then((redditPostData) => {
 			const post = redditPostData[0]?.data?.children?.[0]?.data,
 				  caption = post?.title,
@@ -533,7 +533,7 @@ const Danbooru = (url) => NodeFetch(url.href)
 	if (res.status == 200)
 		return res.text();
 	else
-		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 }).then((danbooruPage) => {
 	let source = "";
 
@@ -588,7 +588,7 @@ const Gelbooru = (url) => NodeFetch(url.href)
 	if (res.status == 200)
 		return res.text();
 	else
-		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 }).then((gelbooruPage) => {
 	let source = "";
 
@@ -625,7 +625,7 @@ const Konachan = (url) => NodeFetch(url.href)
 	if (res.status == 200)
 		return res.text();
 	else
-		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 }).then((konachanPage) => {
 	let source = "";
 
@@ -662,7 +662,7 @@ const Yandere = (url) => NodeFetch(url.href)
 	if (res.status == 200)
 		return res.text();
 	else
-		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 }).then((yanderePage) => {
 	let source = "";
 
@@ -699,7 +699,7 @@ const Eshuushuu = (url) => NodeFetch(url.href)
 	if (res.status == 200)
 		return res.text();
 	else
-		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 }).then((eshuushuuPage) => {
 	let source = "";
 
@@ -736,7 +736,7 @@ const Sankaku = (url) => NodeFetch(url.href)
 	if (res.status == 200)
 		return res.text();
 	else
-		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 }).then((sankakuPage) => {
 	let source = "";
 
@@ -774,7 +774,7 @@ const Zerochan = (url) => NodeFetch(url.href)
 	if (res.status == 200)
 		return res.text();
 	else
-		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 }).then((zerochanPage) => {
 	let source = "";
 
@@ -825,7 +825,7 @@ const AnimePictures = (url) => NodeFetch(url.href)
 	if (res.status == 200)
 		return res.text();
 	else
-		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+		return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 }).then((animePicturesPage) => {
 	let source = "";
 
@@ -868,7 +868,7 @@ const Joyreactor = (url) => {
 		if (res.status == 200)
 			return res.text();
 		else
-			return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+			return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${url.href}`));
 	}).then((joyreactorPage) => {
 		let source = "";
 

@@ -347,7 +347,7 @@ const SetLikes = (ctx) => {
 		messageLink = `https://t.me/c/${chatID}/${replyingMessage.message_id}`;
 
 
-	ctx.reply(`Оценки <a href="${messageLink}">⬆ сообщению ⬆</a>`, {
+	ctx.reply(`Оценки <a href="${encodeURI(messageLink)}">⬆ сообщению ⬆</a>`, {
 		disable_web_page_preview: true,
 		parse_mode: "HTML",
 		reply_to_message_id: replyingMessage.message_id,
@@ -428,7 +428,7 @@ const GlobalReportAboutMark = (iAction, ctx) => {
 		textToSend = `<b>${iAction.type === "set" ? "Поставлен" : "Убран"} ${iAction.target === "like" ? "лайк" : "дизлайк"}</b>
 Пользователь – ${GetUsername(from, ADMIN_TELEGRAM_DATA.username)}
 Чат – <i>${chat?.title || "unknown"}</i>
-Пост – <a href="${messageLink}">${messageLink}</a>`;
+Пост – <a href="${encodeURI(messageLink)}">${messageLink}</a>`;
 
 
 	if (LIKES_STATS_CHANNEL_ID)
@@ -977,18 +977,18 @@ const Twitter = (text, ctx, url) => {
 		const caption = `<i>${TGE(TGUE(post.caption))}</i>\n\nОтправил ${GetUsername(ctx.from, ADMIN_TELEGRAM_DATA.username, "– ")}`;
 
 		if (post.medias.length === 1 && post.medias[0].type === "gif") {
-			ctx.replyWithAnimation(post.medias[0].externalUrl, {
-				caption: `${caption}\n<a href="${post.medias[0].externalUrl}">Исходник гифки</a>`,
+			ctx.replyWithAnimation(encodeURI(post.medias[0].externalUrl), {
+				caption: `${caption}\n<a href="${encodeURI(post.medias[0].externalUrl)}">Исходник гифки</a>`,
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
 					{
 						text: "Твит",
-						url: text
+						url: encodeURI(text)
 					},
 					{
 						text: "Автор",
-						url: post.authorURL
+						url: encodeURI(post.authorURL)
 					},
 					...GlobalSetLikeButtons(ctx)
 				]).reply_markup
@@ -996,18 +996,18 @@ const Twitter = (text, ctx, url) => {
 			.then(() => telegram.deleteMessage(ctx.chat.id, ctx.message.message_id))
 			.catch(LogMessageOrError);
 		} else if (post.medias.length === 1 && post.medias[0].type === "video") {
-			ctx.replyWithVideo(post.medias[0].externalUrl, {
-				caption: `${caption}\n<a href="${post.medias[0].externalUrl}">Исходник видео</a>`,
+			ctx.replyWithVideo(encodeURI(post.medias[0].externalUrl), {
+				caption: `${caption}\n<a href="${encodeURI(post.medias[0].externalUrl)}">Исходник видео</a>`,
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
 					{
 						text: "Твит",
-						url: text
+						url: encodeURI(text)
 					},
 					{
 						text: "Автор",
-						url: post.authorURL
+						url: encodeURI(post.authorURL)
 					},
 					...GlobalSetLikeButtons(ctx)
 				]).reply_markup
@@ -1024,32 +1024,32 @@ const Twitter = (text, ctx, url) => {
 					post.medias.length === 1 ?
 						`\n<a href="${encodeURI(post.medias[0].externalUrl.replace(/(\:\w+)?$/, ":orig"))}">Исходник файла</a>`
 					:
-						"\nФайлы: " + post.medias.map((media, index) => `<a href="${media.externalUrl}">${index + 1}</a>`).join(", ");
+						"\nФайлы: " + post.medias.map((media, index) => `<a href="${encodeURI(media.externalUrl)}">${index + 1}</a>`).join(", ");
 
 
 				if (iMethod === "url") {
 					if (post.medias.length === 1) {
-						return ctx.replyWithPhoto(post.medias[0].externalUrl, {
+						return ctx.replyWithPhoto(encodeURI(post.medias[0].externalUrl), {
 							caption: caption + currentCaptionPostfix,
 							disable_web_page_preview: true,
 							parse_mode: "HTML",
 							reply_markup: Markup.inlineKeyboard([
 								{
 									text: "Твит",
-									url: text
+									url: encodeURI(text)
 								},
 								{
 									text: "Автор",
-									url: post.authorURL
+									url: encodeURI(post.authorURL)
 								},
 								...GlobalSetLikeButtons(ctx)
 							]).reply_markup
 						});
 					} else {
 						return ctx.replyWithMediaGroup(post.medias.map((media) => ({
-								media: media.externalUrl,
+								media: encodeURI(media.externalUrl),
 								type: media.type,
-								caption: `<a href="${media.externalUrl}">Исходник файла</a>`,
+								caption: `<a href="${encodeURI(media.externalUrl)}">Исходник файла</a>`,
 								disable_web_page_preview: true,
 								parse_mode: "HTML"
 							})))
@@ -1062,11 +1062,11 @@ const Twitter = (text, ctx, url) => {
 									reply_markup: Markup.inlineKeyboard([
 										{
 											text: "Твит",
-											url: text
+											url: encodeURI(text)
 										},
 										{
 											text: "Автор",
-											url: post.authorURL
+											url: encodeURI(post.authorURL)
 										},
 										...GlobalSetLikeButtons(ctx)
 									]).reply_markup
@@ -1089,11 +1089,11 @@ const Twitter = (text, ctx, url) => {
 								reply_markup: Markup.inlineKeyboard([
 									{
 										text: "Твит",
-										url: text
+										url: encodeURI(text)
 									},
 									{
 										text: "Автор",
-										url: post.authorURL
+										url: encodeURI(post.authorURL)
 									},
 									...GlobalSetLikeButtons(ctx)
 								]).reply_markup
@@ -1102,7 +1102,7 @@ const Twitter = (text, ctx, url) => {
 							return ctx.replyWithMediaGroup(post.medias.map((media, index) => ({
 								media: { source: mediaBuffers[index] },
 								type: media.type,
-								caption: `<a href="${media.externalUrl}">Исходник файла</a>`,
+								caption: `<a href="${encodeURI(media.externalUrl)}">Исходник файла</a>`,
 								disable_web_page_preview: true,
 								parse_mode: "HTML"
 							})))
@@ -1115,11 +1115,11 @@ const Twitter = (text, ctx, url) => {
 									reply_markup: Markup.inlineKeyboard([
 										{
 											text: "Твит",
-											url: text
+											url: encodeURI(text)
 										},
 										{
 											text: "Автор",
-											url: post.authorURL
+											url: encodeURI(post.authorURL)
 										},
 										...GlobalSetLikeButtons(ctx)
 									]).reply_markup
@@ -1159,14 +1159,14 @@ const TwitterImg = (text, ctx, url) => {
 	 * @returns {Promise}
 	 */
 	const LocalTryWithPostfix = (iPostfixToTryWith) => {
-		return ctx.replyWithPhoto(`https://pbs.twimg.com${mediaPathname}.${format}${iPostfixToTryWith}`, {
+		return ctx.replyWithPhoto(encodeURI(`https://pbs.twimg.com${mediaPathname}.${format}${iPostfixToTryWith}`), {
 			caption: `Отправил ${GetUsername(ctx.from, ADMIN_TELEGRAM_DATA.username, "– ")}`,
 			disable_web_page_preview: true,
 			parse_mode: "HTML",
 			reply_markup: Markup.inlineKeyboard([
 				{
 					text: "Оригинал",
-					url: `https://pbs.twimg.com${mediaPathname}.${format}:orig`
+					url: encodeURI(`https://pbs.twimg.com${mediaPathname}.${format}:orig`)
 				},
 				...GlobalSetLikeButtons(ctx)
 			]).reply_markup
@@ -1194,8 +1194,8 @@ const Instagram = (text, ctx, url) => {
 	.then((post) => {
 		if (!post.medias || !post.medias.length) return;
 
-		let caption = `${post.caption.length > 50 ? post.caption.slice(0, 50) + "…" : post.caption}\n\nОтправил ${GetUsername(ctx.from, ADMIN_TELEGRAM_DATA.username, "– ")}`;
-
+		let caption = `${post.caption.length > 250 ? post.caption.slice(0, 250) + "…" : post.caption}\n\nОтправил ${GetUsername(ctx.from, ADMIN_TELEGRAM_DATA.username, "– ")}`;
+	
 		if (post.medias.length === 1)
 			caption += `\n<a href="${encodeURI(post.medias[0].externalUrl)}">Исходник файла</a>`;
 		else
@@ -1203,18 +1203,18 @@ const Instagram = (text, ctx, url) => {
 
 
 		if (post.medias.length === 1) {
-			ctx[post.medias[0].type === "video" ? "replyWithVideo" : "replyWithPhoto"](post.medias[0].externalUrl, {
+			ctx[post.medias[0].type === "video" ? "replyWithVideo" : "replyWithPhoto"](encodeURI(post.medias[0].externalUrl), {
 				caption,
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
 					{
 						text: "Пост",
-						url: post.postURL
+						url: encodeURI(post.postURL)
 					},
 					{
 						text: "Автор",
-						url: post.authorURL
+						url: encodeURI(post.authorURL)
 					},
 					...GlobalSetLikeButtons(ctx)
 				]).reply_markup
@@ -1223,7 +1223,7 @@ const Instagram = (text, ctx, url) => {
 			.catch(LogMessageOrError);
 		} else {
 			ctx.replyWithMediaGroup(post.medias.map((media) => ({
-				media: media.externalUrl,
+				media: encodeURI(media.externalUrl),
 				type: media.type,
 				caption: `<a href="${encodeURI(media.externalUrl)}">Исходник файла</a>`,
 				disable_web_page_preview: true,
@@ -1238,11 +1238,11 @@ const Instagram = (text, ctx, url) => {
 					reply_markup: Markup.inlineKeyboard([
 						{
 							text: "Пост",
-							url: post.postURL
+							url: encodeURI(post.postURL)
 						},
 						{
 							text: "Автор",
-							url: post.authorURL
+							url: encodeURI(post.authorURL)
 						},
 						...GlobalSetLikeButtons(ctx)
 					]).reply_markup
@@ -1271,9 +1271,9 @@ const Pixiv = (text, ctx, url) => {
 
 
 		if (post.medias.length === 1)
-			caption += `\n<a href="${post.medias[0].original}">Исходник файла</a>`;
+			caption += `\n<a href="${encodeURI(post.medias[0].original)}">Исходник файла</a>`;
 		else
-			caption += "\nФайлы: " + post.medias.map((media, index) => `<a href="${media.original}">${index + 1}</a>`).join(", ");
+			caption += "\nФайлы: " + post.medias.map((media, index) => `<a href="${encodeURI(media.original)}">${index + 1}</a>`).join(", ");
 
 
 		if (post.medias.length > 10)
@@ -1281,18 +1281,18 @@ const Pixiv = (text, ctx, url) => {
 
 
 		if (post.medias.length === 1) {
-			ctx.replyWithPhoto(post.medias[0].externalUrl, {
+			ctx.replyWithPhoto(encodeURI(post.medias[0].externalUrl), {
 				caption,
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
 					{
 						text: "Пост",
-						url: post.postURL
+						url: encodeURI(post.postURL)
 					},
 					{
 						text: "Автор",
-						url: post.authorURL
+						url: encodeURI(post.authorURL)
 					},
 					...GlobalSetLikeButtons(ctx)
 				]).reply_markup
@@ -1301,9 +1301,9 @@ const Pixiv = (text, ctx, url) => {
 			.catch(LogMessageOrError);
 		} else {
 			ctx.replyWithMediaGroup(post.medias.slice(0, 10).map((media, sourceIndex) => ({
-				media: media.externalUrl,
+				media: encodeURI(media.externalUrl),
 				type: media.type,
-				caption: `<a href="${media.original}">Исходник файла</a>`,
+				caption: `<a href="${encodeURI(media.original)}">Исходник файла</a>`,
 				disable_web_page_preview: true,
 				parse_mode: "HTML"
 			})))
@@ -1316,11 +1316,11 @@ const Pixiv = (text, ctx, url) => {
 					reply_markup: Markup.inlineKeyboard([
 						{
 							text: "Пост",
-							url: post.postURL
+							url: encodeURI(post.postURL)
 						},
 						{
 							text: "Автор",
-							url: post.authorURL
+							url: encodeURI(post.authorURL)
 						},
 						...GlobalSetLikeButtons(ctx)
 					]).reply_markup
@@ -1352,18 +1352,18 @@ const Reddit = (text, ctx, url) => {
 
 			ctx.replyWithVideo(filename ? {
 				source: createReadStream(filename)
-			} : externalUrl, {
+			} : encodeURI(externalUrl), {
 				caption: `${caption}\n<a href="${encodeURI(externalUrl)}">Исходник видео</a>${otherSources?.audio ? `, <a href="${encodeURI(otherSources?.audio)}">исходник аудио</a>` : ""}`,
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
 				reply_markup: Markup.inlineKeyboard([
 					{
 						text: "Пост",
-						url: post.postURL
+						url: encodeURI(post.postURL)
 					},
 					{
 						text: "Автор",
-						url: post.authorURL
+						url: encodeURI(post.authorURL)
 					},
 					...GlobalSetLikeButtons(ctx)
 				]).reply_markup
@@ -1388,11 +1388,11 @@ const Reddit = (text, ctx, url) => {
 					reply_markup: Markup.inlineKeyboard([
 						{
 							text: "Пост",
-							url: post.postURL
+							url: encodeURI(post.postURL)
 						},
 						{
 							text: "Автор",
-							url: post.authorURL
+							url: encodeURI(post.authorURL)
 						},
 						...GlobalSetLikeButtons(ctx)
 					]).reply_markup
@@ -1400,7 +1400,7 @@ const Reddit = (text, ctx, url) => {
 
 
 				if (iMethod === "url")
-					return ctx[type === "gif" ? "replyWithAnimation" : "replyWithPhoto"](externalUrl, options)
+					return ctx[type === "gif" ? "replyWithAnimation" : "replyWithPhoto"](encodeURI(externalUrl), options)
 						.then(() => telegram.deleteMessage(ctx.chat.id, ctx.message.message_id));
 
 				return NodeFetch(externalUrl)
@@ -1440,7 +1440,7 @@ const Reddit = (text, ctx, url) => {
 						(
 							iMethod === "url" ? 
 								ctx.replyWithMediaGroup(imagesToSend.map((media) => ({
-									media: media.externalUrl,
+									media: encodeURI(media.externalUrl),
 									type: media.type,
 									caption: `<a href="${encodeURI(media.externalUrl)}">Исходник файла</a>`,
 									disable_web_page_preview: true,
@@ -1474,7 +1474,7 @@ const Reddit = (text, ctx, url) => {
 
 						(
 							iMethod === "url" ?
-								ctx.replyWithPhoto(imagesToSend[0].externalUrl)
+								ctx.replyWithPhoto(encodeURI(imagesToSend[0].externalUrl))
 							:
 								NodeFetch(imagesToSend[0].externalUrl)
 								.then((res) => res.buffer())
@@ -1527,11 +1527,11 @@ const Reddit = (text, ctx, url) => {
 						reply_markup: Markup.inlineKeyboard([
 							{
 								text: "Пост",
-								url: post.postURL
+								url: encodeURI(post.postURL)
 							},
 							{
 								text: "Автор",
-								url: post.authorURL
+								url: encodeURI(post.authorURL)
 							},
 							...GlobalSetLikeButtons(ctx)
 						]).reply_markup
@@ -1579,7 +1579,7 @@ const GenericBooruSend = (ctx, source, postURL) => {
 		if (res.status === 200)
 			return res.buffer();
 		else
-			return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}`));
+			return Promise.reject(new Error(`Status code = ${res.status} ${res.statusText}. URL = ${source}`));
 	})
 	.then((buffer) =>
 		ctx.replyWithPhoto({ source: buffer }, {
