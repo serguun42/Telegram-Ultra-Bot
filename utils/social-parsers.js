@@ -70,7 +70,7 @@ const Twitter = (url) => {
 		statusID = pathname.match(/^\/i\/web\/status(es)?\/(\d+)/)[2];
 
 
-	if (!statusID) return resolve({});
+	if (!statusID) return Promise.resolve({});
 
 
 	return new Promise((resolve, reject) => {
