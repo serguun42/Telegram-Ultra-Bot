@@ -17,7 +17,7 @@ const telegram = telegraf.telegram;
 
 
 CHATS_LIST.forEach((chat) => {
-	telegram.sendMessage(chat.id, "Бот уходит на обслуживание.")
+	telegram.sendMessage(chat.id, "Бот обновился: новый механизм отправки спойлеров от бота. Для пользователей – всё по-старому, но удобнее.")
 		.then(console.log)
 		.catch(console.warn);
 });
