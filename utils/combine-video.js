@@ -1,6 +1,6 @@
-const 
+const
 	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
-	NodeFetch = require("node-fetch"),
+	NodeFetch = require("node-fetch").default,
 	LogMessageOrError = require("./log"),
 	path = require("path"),
 	fs = require("fs"),

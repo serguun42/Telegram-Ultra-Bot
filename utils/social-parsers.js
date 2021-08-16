@@ -1,7 +1,8 @@
 const
 	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
-	NodeFetch = require("node-fetch"),
+	NodeFetch = require("node-fetch").default,
 	TwitterModule = require("twitter-lite"),
+	TumblrJS = require("tumblr.js"),
 	GlobalCombineVideo = require("./combine-video"),
 	{ SafeParseURL, GetDomain, ParseQuery } = require("./common-utils");
 
@@ -12,7 +13,8 @@ const
 		TWITTER_CONSUMER_KEY,
 		TWITTER_CONSUMER_SECRET,
 		INSTAGRAM_COOKIE,
-		CUSTOM_IMG_VIEWER_SERVICE
+		CUSTOM_IMG_VIEWER_SERVICE,
+		TUMBLR_OAUTH
 	} = CONFIG;
 
 
@@ -32,6 +34,13 @@ TwitterUser.getBearerToken().then((response) => {
 
 
 
+const TumblrClient = TumblrJS.createClient({
+	credentials: TUMBLR_OAUTH,
+	returnPromises: true
+});
+
+
+
 /**
  * @typedef {Object} Media
  * @property {"gif" | "video" | "photo"} type
@@ -40,8 +49,8 @@ TwitterUser.getBearerToken().then((response) => {
  * @property {String} [filename]
  * @property {{[otherSourceOriginKey: string]: string}} [otherSources]
  * @property {() => void} [fileCallback]
- * 
- * 
+ *
+ *
  * @typedef {Object} DefaultSocialPost
  * @property {String} caption
  * @property {String} author
@@ -57,8 +66,8 @@ TwitterUser.getBearerToken().then((response) => {
  */
 const Twitter = (url) => {
 	if (!(url instanceof URL)) url = new URL(url);
-	
-	
+
+
 	let { pathname } = url,
 		statusID = 0;
 
@@ -446,7 +455,7 @@ const Reddit = (url) => {
 						/** @type {Media[]} */
 						const videoSources = [];
 
-						if (url) 
+						if (url)
 							videoSources.push({
 								externalUrl: url,
 								type: isGif ? "gif" : "video"
@@ -462,7 +471,6 @@ const Reddit = (url) => {
 								fileCallback: onDoneCallback
 							})
 
-						
 						return redditResolve({
 							author,
 							authorURL,
@@ -522,6 +530,58 @@ const Reddit = (url) => {
 			};
 		}).catch(redditReject);
 	})
+}
+
+/**
+ * @param {URL} url
+ * @returns {Promise<DefaultSocialPost>}
+ */
+const Tumblr = (url) => {
+	if (!(url instanceof URL)) url = new URL(url);
+
+	const blogID = url.hostname.replace(/\.tumblr\.(com|co\.\w+|org)$/i, ""),
+		  postID = url.pathname.match(/^\/posts?\/(\d+)/i)?.[1];
+
+	if (!blogID || !postID) return;
+
+
+	const API_PATH_BASE = `/v2/blog/__BLOG_ID__/posts/__POST_ID__`,
+		  fetchingAPIPath = API_PATH_BASE.replace(/__BLOG_ID__/g, blogID).replace(/__POST_ID__/g, postID);
+
+	return TumblrClient.getRequest(fetchingAPIPath, {})
+	.then(/** @param {import("../types/tumblr").Tumblr} tumblr */ (tumblr) => {
+		const content = tumblr.content?.length ? tumblr.content : tumblr.trail?.[0]?.content;
+
+		if (!content) return Promise.reject(new Error(`No content in tumblr: ${url.pathname}`));
+
+
+		/** @type {Media[]} */
+		const medias = content.filter((block) => block.type === "image").map((image) => {
+			if (!image.media) return null;
+
+			return image.media.sort((prev, next) => next.width - prev.width)?.[0];
+		}).filter((image) => !!image).map((image) => ({
+			type: "photo",
+			externalUrl: image.url
+		}));
+
+		if (!medias?.length) return Promise.reject(new Error(`No medias in tumblr: ${url.pathname}`));
+
+
+		const caption = content.filter((block) => block.type === "text").map((text) => text?.text || "").join("\n\n");
+
+
+		/** @type {DefaultSocialPost} */
+		const fineTumblrSocialPost = {
+			author: blogID,
+			authorURL: `https://${blogID}.tumblr.com`,
+			caption: caption || "",
+			medias,
+			postURL: `https://${blogID}.tumblr.com/post/${postID}`
+		};
+
+		return Promise.resolve(fineTumblrSocialPost);
+	});
 }
 
 /**
@@ -603,7 +663,7 @@ const Gelbooru = (url) => NodeFetch(url.href)
 	};
 
 	if (!source) return Promise.reject(new Error(["No Gelbooru source", url.href]));
-	
+
 	return Promise.resolve({
 		author: "",
 		authorURL: "",
@@ -803,7 +863,7 @@ const Zerochan = (url) => NodeFetch(url.href)
 		basenameMatch = zerochanPage.match(new RegExp(sourceBasename + ".[\\w\\d]+", "gi"));
 
 	if (basenameMatch && basenameMatch.pop) source = basenameMatch.pop();
-	
+
 	return Promise.resolve({
 		author: "",
 		authorURL: "",
@@ -908,6 +968,7 @@ const SocialParsers = {
 	Instagram,
 	Pixiv,
 	Reddit,
+	Tumblr,
 	Danbooru,
 	Gelbooru,
 	Konachan,

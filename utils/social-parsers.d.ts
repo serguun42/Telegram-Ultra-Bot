@@ -56,6 +56,11 @@ export function Reddit(url: URL): Promise<DefaultSocialPost>;
  * @param {URL} url
  * @returns {Promise<DefaultSocialPost>}
  */
+export function Tumblr(url: URL): Promise<DefaultSocialPost>;
+/**
+ * @param {URL} url
+ * @returns {Promise<DefaultSocialPost>}
+ */
 export function Danbooru(url: URL): Promise<DefaultSocialPost>;
 /**
  * @param {URL} url

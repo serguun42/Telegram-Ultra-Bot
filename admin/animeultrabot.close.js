@@ -1,10 +1,10 @@
-const 
+const
 	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
 	Telegraf = require("telegraf");
 
 const
 	CONFIG = DEV ? require("../animeultrabot.config.mine.json") : require("../animeultrabot.config.json"),
-	{ 
+	{
 		TELEGRAM_BOT_TOKEN
 	} = CONFIG;
 

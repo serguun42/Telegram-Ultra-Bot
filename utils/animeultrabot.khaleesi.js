@@ -354,7 +354,7 @@ const KhaleesiEngine = {
 
 /**
  * При необходимости заменяем на `const Khaleesi`
- * 
+ *
  * @param {String} iMessage
  * @returns {String}
  */

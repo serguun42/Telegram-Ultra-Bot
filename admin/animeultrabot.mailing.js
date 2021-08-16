@@ -1,4 +1,4 @@
-const 
+const
 	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
 	Telegraf = require("telegraf");
 
@@ -17,7 +17,7 @@ const telegram = telegraf.telegram;
 
 
 CHATS_LIST.forEach((chat) => {
-	telegram.sendMessage(chat.id, "Бот обновился: новый механизм отправки спойлеров от бота. Для пользователей – всё по-старому, но удобнее.")
+	telegram.sendMessage(chat.id, "Бот обновился: добавлена поддержка постов на Tumblr.")
 		.then(console.log)
 		.catch(console.warn);
 });

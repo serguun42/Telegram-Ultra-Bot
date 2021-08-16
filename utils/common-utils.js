@@ -129,8 +129,8 @@ const LoadCommandDescription = (iCommandName, iConfig) => {
 			});
 		};
 	})
-	
-	
+
+
 	return builtWithConfig;
 }
 

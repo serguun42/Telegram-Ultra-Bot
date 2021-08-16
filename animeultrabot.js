@@ -1,6 +1,6 @@
 const
 	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
-	NodeFetch = require("node-fetch"),
+	NodeFetch = require("node-fetch").default,
 	Telegraf = require("telegraf").Telegraf,
 	Markup = require("telegraf").Markup,
 	KhaleesiModule = require("./utils/animeultrabot.khaleesi"),
@@ -883,6 +883,10 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve) => {
 	)
 		return resolve({ status: true, platform: Pixiv, url });
 	else if (
+		/tumblr\.(com|co\.\w+|org)$/i.test(url.hostname || "")
+	)
+		return resolve({ status: true, platform: Tumblr, url });
+	else if (
 		url.hostname == "danbooru.donmai.us" |
 		url.origin == "https://danbooru.donmai.us"
 	)
@@ -1045,7 +1049,7 @@ const Twitter = (text, ctx, url) => {
 					};
 				} else if (iMethod === "buffer") {
 					return Promise.all(
-						post.medias.map((media) => 
+						post.medias.map((media) =>
 							NodeFetch(media.externalUrl).then((media) => media.buffer())
 						)
 					).then(/** @param {Buffer[]} mediaBuffers */ (mediaBuffers) => {
@@ -1408,7 +1412,7 @@ const Reddit = (text, ctx, url) => {
 						if (!stillLoading) return;
 
 						(
-							iMethod === "url" ? 
+							iMethod === "url" ?
 								ctx.replyWithMediaGroup(imagesToSend.map((media) => ({
 									media: encodeURI(media.externalUrl),
 									type: media.type,
@@ -1517,6 +1521,78 @@ const Reddit = (text, ctx, url) => {
 				.catch(LogMessageOrError);
 			});
 		}
+	})
+	.catch(LogMessageOrError);
+};
+
+/**
+ * @param {String} text
+ * @param {TelegramContext} ctx
+ * @param {URL} url
+ * @returns {void}
+ */
+const Tumblr = (text, ctx, url) => {
+	SocialParsers.Tumblr(url)
+	.then((post) => {
+		if (!post.medias || !post.medias.length) return;
+
+		const caption = `${post.caption ? `<i>${TGE(post.caption)}</i>\n\n` : ""}Отправил ${GetUsername(ctx.from, ADMIN_TELEGRAM_DATA.username, "– ")}`;
+
+		const currentCaptionPostfix =
+			post.medias.length === 1 ?
+				`\n<a href="${encodeURI(post.medias[0].externalUrl.replace(/(\:\w+)?$/, ":orig"))}">Исходник файла</a>`
+			:
+				"\nФайлы: " + post.medias.map((media, index) => `<a href="${encodeURI(media.externalUrl)}">${index + 1}</a>`).join(", ");
+
+		if (post.medias.length === 1) {
+			return ctx.replyWithPhoto(encodeURI(post.medias[0].externalUrl), {
+				caption: caption + currentCaptionPostfix,
+				disable_web_page_preview: true,
+				parse_mode: "HTML",
+				reply_markup: Markup.inlineKeyboard([
+					{
+						text: "Tumblr",
+						url: encodeURI(text)
+					},
+					{
+						text: "Автор",
+						url: encodeURI(post.authorURL)
+					},
+					...GlobalSetLikeButtons(ctx)
+				]).reply_markup
+			})
+			.then(() => telegram.deleteMessage(ctx.chat.id, ctx.message.message_id))
+			.catch(LogMessageOrError);
+		} else {
+			return ctx.replyWithMediaGroup(post.medias.map((media) => ({
+				media: encodeURI(media.externalUrl),
+				type: media.type,
+				caption: `<a href="${encodeURI(media.externalUrl)}">Исходник файла</a>`,
+				disable_web_page_preview: true,
+				parse_mode: "HTML"
+			})))
+			.then((sentMessage) => {
+				ctx.reply(caption + currentCaptionPostfix, {
+					disable_web_page_preview: true,
+					parse_mode: "HTML",
+					reply_to_message_id: sentMessage.message_id,
+					allow_sending_without_reply: true,
+					reply_markup: Markup.inlineKeyboard([
+						{
+							text: "Tumblr",
+							url: encodeURI(text)
+						},
+						{
+							text: "Автор",
+							url: encodeURI(post.authorURL)
+						},
+						...GlobalSetLikeButtons(ctx)
+					]).reply_markup
+				})
+				.then(() => telegram.deleteMessage(ctx.chat.id, ctx.message.message_id))
+				.catch(LogMessageOrError);
+			});
+		};
 	})
 	.catch(LogMessageOrError);
 };
