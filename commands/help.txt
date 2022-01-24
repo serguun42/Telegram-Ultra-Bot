@@ -1,6 +1,5 @@
 Что я умею?
 
-• Скрывать спойлеры командой /spoiler (смотри команду /aboutspoiler@${BOT_USERNAME}).
-• Обрабатывать ссылки на ресурсы (смотри команды /aboutpicker@${BOT_USERNAME} и /pickerlist@${BOT_USERNAME}).
-• Добавлять кнопки оценок к сообщениям.
+• Обрабатывать ссылки на ресурсы, заменяя их контентом, находящимся по этим ссылкам (смотри команды /aboutpicker@${BOT_USERNAME} и /pickerlist@${BOT_USERNAME}).
+• Делать спойлеры командой /spoiler@${BOT_USERNAME} (смотри команду /aboutspoiler@${BOT_USERNAME}).
 • Приветствовать новых пользователей.

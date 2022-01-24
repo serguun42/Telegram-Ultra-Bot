@@ -1,0 +1,68 @@
+{
+	"BOT_TOKEN": "000000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	"BOT_USERNAME": "animebot_cool_username",
+	"ADMIN": {
+		"id": 123456789000000000000,
+		"username": "admin_username"
+	},
+	"CHATS_LIST": [
+		{
+			"id": -123456789000000000000,
+			"name": "TEST CHAT",
+			"enabled": true,
+			"welcome": {
+				"type": "text",
+				"message": "Привет, __USERNAME__!\nМожешь кинуть ссылку на свой список аниме?"
+			}
+		},
+		{
+			"id": -123456789000000000001,
+			"name": "MAIN CHAT",
+			"enabled": false
+		},
+		{
+			"id": -123456789000000000002,
+			"name": "OTHER CHAT",
+			"enabled": false,
+			"welcome": {
+				"type": "gif",
+				"message": {
+					"file_id": "AAAAAAAAAAAAAAAAA-BBBBBBBBBBBBBBBBBBBBB-CCCCCCCCCCCCC-123456789",
+					"caption": "Добро пожаловать в наш клуб! Во что играешь?"
+				}
+			}
+		},
+		{
+			"id": -123456789000000000003,
+			"name": "4TH CHAT",
+			"enabled": true,
+			"welcome": {
+				"type": "gif",
+				"message": {
+					"filename": "./resources/abcdef123456790000000000000000000000.mp4",
+					"caption": "Добро пожаловать в наш клуб! Во что играешь?"
+				}
+			}
+		}
+	],
+	"WHITELIST": [
+		"user1",
+		"user2",
+		"user3 и т.д."
+	],
+	"BLACKLIST": [
+		"bad_user1",
+		"bad_user2",
+		6900000000
+	],
+	"SPECIAL_STICKERS_SET": "your_stickers_set_name",
+	"SPECIAL_PHRASE": {
+		"regexp": "^hello\\sthere!$",
+		"sticker": "AAAAAAAAAAAAAAAAA-BBBBBBBBBBBBBBBBBBBBB-CCCCCCCCCCCCC-123456789",
+		"gif": "AAAAAAAAAAAAAAAAA-BBBBBBBBBBBBBBBBBBBBB-CCCCCCCCCCCCC-123456789"
+	},
+	"LOCAL_BOT_API_SERVER": {
+		"hostname": "localhost",
+		"port": 8081
+	}
+}

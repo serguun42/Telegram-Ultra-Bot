@@ -1,98 +1,36 @@
 # Anime Ultra Bot
 ## Что умеет?
 
-* Скрывать спойлеры командой /spoiler.
-* Обрабатывать ссылки на ресурсы.
+* Обрабатывать ссылки на ресурсы, заменяя их контентом, находящимся по этим ссылкам – см. репозиторий [Social-Picker-API](https://github.com/serguun42/Social-Picker-API) и команды [aboutpicker](./commands/aboutpicker.txt) и [pickerlist](./commands/pickerlist.txt).
+* Скрывать спойлеры командой /spoiler – см. [aboutspoiler](./commands/aboutspoiler.txt).
 * Приветствовать новых пользователей.
-* Добавлять кнопки оценок к сообщениям.
+* *Кхалиси*фицировать текст на русском языке (изменяет на текст сообщения, на которое ответили командой `/khaleesi`) – см. [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS).
+* Отвечает случайным стикером из заранее выбранного стикерпака на команду `/cheboratb`.
 
-#### Обработка ссылок на ресурсы
+### Команды
+1. Установить только необходимые зависимости – `npm i --production`
+2. Запустить production-бота – `npm run production`
 
-Если сообщение пользователя состоит из одной только ссылки на
-* Твит (изображения, гифки и видео)
-* Иллюстрацию или мангу в Pixiv (изображения)
-* Пост в Tumblr (изображения)
-* Пост в Instagram (изображения и видео)
-* Пост на Reddit (изображения, гифки (+ галереи из них) и видео)
-* Пост на Danbooru (изображения)
-* Пост на Gelbooru (изображения)
-* Пост на Konachan (изображения)
-* Пост на Yande.re (изображения)
-* Пост на Sankaku Channel (изображения)
-* Пост на Zerochan (изображения)
-* Пост на Anime-Pictures.net (изображения)
-* Пост на Anime Joyreactor (изображения)
-* На файл изображения в Твиттере
+### Конфигурация
 
-то бот отправит в чат все картинки из поста в лучшем качестве, даст ссылки на пост, автора (при наличии), на файлы картинок/гифок/видео, сделает красивые кнопки для перехода (в зависимости от платформы) к автору и/или посту и/или исходнику, а также рабочую кнопку лайка.
+* [`telegram.json`](./config/telegram.json):
+* * токены для *Telegram*
+* * список чатов
+* * white-list пользователей для использования команд (нет таймаута)
+* * данные админа
+* * приветствия, специальные фразы и стикеры, прочее
+* [`social-picker-service.json`](./config/social-picker-service.json)
+* * адреса и порт сервиса [Social Picker API](https://github.com/serguun42/Social-Picker-API)
+* [`pm2.production.json`](./config/pm2.production.json) – config for Node.js daemon `pm2`
+* [`nodemon.dev.json`](./config/nodemon.dev.json) – config development hot-reloader `nodemon`
 
+### Папки
+* `admin` – скрипты для рассылки сообщений и выходов из Telegram; [admin/README.md](admin/README.md)
+* `commands` – текстовые шаблоны команд для бота, настраиваются при запуске.
+* `util` – разные утилиты
 
-#### Команда /spoiler
-
-Если пользователь
-* напишет спойлер через инлайн,
-* напишет команду /spoiler в реплае к тексту или картинке,
-* напишет команду /spoiler в описании к картинку при её отправке (после команды можешь указать описание, и оно будет видно при отправке через ЛС бота),
-* напишет команду /spoiler, а после неё текст спойлера,
-то бот скроет текст и/или изображения спойлера.
-
-
-#### Команда /khaleesi
-
-*Кхалиси*фицирует текст – работает на текст сообщения, на которое ответили командой `/khaleesi`.
-
-
-#### Команда /cheboratb
-
-Отвечает случайным стикером из заранее выбранного стикерпака.
-
-
-## Конфигурация
-
-Всё указывается и настраивается в файле `animeultrabot.config.json`:
-* токены для Telegram и Twitter
-* cookie для Instagram
-* список чатов с id и, опционально, с приветствиями
-* white-list пользователей для использования команд (нет таймаута)
-* данные админа
-* картинки для взаимодействия с пользователем в inline-режиме для отправки спойлеров (можно/нельзя ли отправить спойлер)
-* id Telegram-канала для отправки статистики по лайкам (бот должен быть админом в том канале) и т.п.
-
-## Папки
-* `admin` – скрипты для рассылки сообщений и выходов из Telegram. См. [admin/README.md](admin/README.md)
-* `commands` – Текстовые шаблоны команд для бота, настраиваются при запуске.
-* `utils` – разные утилсы. Включает логгера, склейщика видео со звуком, парсеры страниц, Кхалиси-модуля. См. [utils/README.md](utils/README.md)
-
-## Использующиеся модули
-
-Модули, которые использует `animeultrabot.js` (можете установить их через `npm`, `yarn`, etc.):
-* Telegraf
-* Twitter-lite
-* node-fetch
-* ffmpeg
-* [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS) – ровно такой же модуль есть и в этом репозитории
-
-#### Установка всего необходимого
-```
-npm install
-```
-
-#### Запуск бота
-```
-npm run start_bot
-```
-
-#### Запуск по-другому
-```
-node animeultrabot.js
-```
-или
-```
-pm2 start animeultrabot.js
-```
-
-#### Полезные ссылки
+### Полезные ссылки
 * [Telegraf Module for Node.js](https://telegraf.js.org/)
 * [Telegram Bots API](https://core.telegram.org/bots/api)
-* [Twitter API page for getting status](https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/get-statuses-show-id)
-* [ffmpeg Documentation](https://ffmpeg.org/ffmpeg.html)
+* [Social-Picker-API](https://github.com/serguun42/Social-Picker-API)
+* [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS)

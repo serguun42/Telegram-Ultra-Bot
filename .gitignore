@@ -5,10 +5,8 @@ out/
 test/
 resources/
 
-package-lock.json
-animeultrabot.kickuser.js
-animeultrabot.config.mine.json
-
-create-ts-typings.bat
 tsconfig.json
-@types/
+package-lock.json
+*.bat
+*.sh
+*.dev.*

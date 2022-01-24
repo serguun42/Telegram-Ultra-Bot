@@ -1,16 +1,13 @@
-const
-	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
-	Telegraf = require("telegraf");
+const DEV = require("../util/is-dev");
+const Telegraf = require("telegraf");
 
-const
-	CONFIG = DEV ? require("../animeultrabot.config.mine.json") : require("../animeultrabot.config.json"),
-	{
-		TELEGRAM_BOT_TOKEN
-	} = CONFIG;
+const {
+	BOT_TOKEN
+} = (DEV ? require("../config/telegram.dev.json") : require("../config/telegram.json"));
 
 
 
-const telegraf = new Telegraf.Telegraf(TELEGRAM_BOT_TOKEN);
+const telegraf = new Telegraf.Telegraf(BOT_TOKEN);
 const telegram = telegraf.telegram;
 
 

@@ -1,7 +1,7 @@
 const KhaleesiPostCorrection = {
 	/**
-	 * @param {String[]} iWords
-	 * @returns {String[]}
+	 * @param {string[]} iWords
+	 * @returns {string[]}
 	 */
 	getPostCorrection: iWords => {
 		let result = new Array();
@@ -24,8 +24,8 @@ const KhaleesiPostCorrection = {
 	},
 
 	/**
-	 * @param {String} word
-	 * @returns {String}
+	 * @param {string} word
+	 * @returns {string}
 	 */
 	randomMixWord: (word) => {
 		let mixedUpRules = KhaleesiPostCorrection.POST_CORRECTION_RULES.slice(0);
@@ -107,20 +107,20 @@ const KhaleesiPostCorrection = {
 
 const KhaleesiUtils = {
 	/**
-	 * @param {String} iString
-	 * @returns {String[]}
+	 * @param {string} iString
+	 * @returns {string[]}
 	 */
 	getWords: iString => iString.split(/(\s+)/),
 
 	/**
-	 * @param {String} iWord
-	 * @returns {Boolean}
+	 * @param {string} iWord
+	 * @returns {boolean}
 	 */
 	hasCyrillics: iWord => /[а-я]/i.test(iWord),
 
 	/**
-	 * @param {String} iWord
-	 * @returns {Array.<[String, String, String]>}
+	 * @param {string} iWord
+	 * @returns {Array.<[string, string, string]>}
 	 */
 	previousAndNext: iWord => {
 		let result = new Array();
@@ -136,9 +136,9 @@ const KhaleesiUtils = {
 	},
 
 	/**
-	 * @param {String} iChar
-	 * @param {String} iReplacement
-	 * @returns {String}
+	 * @param {string} iChar
+	 * @param {string} iReplacement
+	 * @returns {string}
 	 */
 	replaceWithCase: (iChar, iReplacement) => {
 		if (iChar.toUpperCase() === iChar)
@@ -149,7 +149,7 @@ const KhaleesiUtils = {
 };
 
 const KhaleesiEngine = {
-	/** @type {{[x: string]: Array.<{regexp: RegExp, replacement: String}>}} */
+	/** @type {{[x: string]: Array.<{regexp: RegExp, replacement: string}>}} */
 	globalReplaces: new Object(),
 
 	VOWELS: "аеёиоуыэюя",
@@ -228,7 +228,7 @@ const KhaleesiEngine = {
 	},
 
 	/**
-	 * @returns {{[x: string]: Array.<{regexp: RegExp, replacement: String}>}}
+	 * @returns {{[x: string]: Array.<{regexp: RegExp, replacement: string}>}}
 	 */
 	getReplaces: () => {
 		/* Теперь на основе этих глобальных правил делаем регулярные выражения */
@@ -237,7 +237,7 @@ const KhaleesiEngine = {
 		for (let char in KhaleesiEngine.REPLACES_RULES) {
 			let stringPatterns = KhaleesiEngine.REPLACES_RULES[char];
 
-			/** @type {Array.<{regexp: RegExp, replacement: String}>} */
+			/** @type {Array.<{regexp: RegExp, replacement: string}>} */
 			let tripples = new Array();
 
 			stringPatterns.forEach((stringPattern) => {
@@ -274,8 +274,8 @@ const KhaleesiEngine = {
 	},
 
 	/**
-	 * @param {String} iWord
-	 * @returns {String}
+	 * @param {string} iWord
+	 * @returns {string}
 	 */
 	replaceWord: iWord => {
 		if (!Object.keys(KhaleesiEngine.globalReplaces).length)
@@ -308,7 +308,7 @@ const KhaleesiEngine = {
 
 	/**
 	 * @param {{prevChar: string, currentChar: string, nextChar: string, lowerCurrentChar: string, word: string, groupIndex: number}} iObj
-	 * @returns {String}
+	 * @returns {string}
 	 */
 	replaceChar: (iObj) => {
 		let {prevChar, currentChar, nextChar, lowerCurrentChar, word, groupIndex} = iObj,
@@ -334,29 +334,14 @@ const KhaleesiEngine = {
 
 
 		return replacedChar;
-	},
-
-	/**
-	 * @param {String} word
-	 * @param {String} currentChar
-	 * @param {Number} indexOfChar
-	 */
-	getWordForSearch: (word, currentChar, indexOfChar) => {
-		let wordForPattern = word.replace(
-				new RegExp(currentChar, "gi"),
-				KhaleesiEngine.VOWELS.includes(currentChar) ? `靷` : `選`
-			);
-			wordForPattern = wordForPattern.slice(0, indexOfChar) + currentChar + wordForPattern.slice(indexOfChar + 1);
-
-		return wordForPattern.replace(/靷/g, `[${KhaleesiEngine.VOWELS}]`).replace(/選/g, `[${KhaleesiEngine.CONSONANTS}]`);
 	}
 };
 
 /**
  * При необходимости заменяем на `const Khaleesi`
  *
- * @param {String} iMessage
- * @returns {String}
+ * @param {string} iMessage
+ * @returns {string}
  */
 module.exports = iMessage => {
 	let result = new Array();

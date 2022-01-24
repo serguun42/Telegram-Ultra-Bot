@@ -1,9 +1,8 @@
-const
-	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
-	fs = require("fs");
+const DEV = require("./is-dev");
+const { writeFile } = require("fs");
 
 /**
- * @param  {Error[] | String[]} args
+ * @param  {(string | Error)[]} args
  * @returns {void}
  */
 const LogMessageOrError = (...args) => {
@@ -14,8 +13,7 @@ const LogMessageOrError = (...args) => {
 	args.forEach((message) => out(message));
 	out("~~~~~~~~~~~\n\n");
 
-
-	if (DEV) fs.writeFile("../out/logmessageorerror.json", JSON.stringify([...args], false, "\t"), () => {});
+	if (DEV) writeFile("./out/logmessageorerror.json", JSON.stringify(args, false, "\t"), () => {});
 };
 
 module.exports = LogMessageOrError;
