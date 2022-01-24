@@ -1,7 +1,7 @@
 {
 	"apps": [{
-		"name"				: "animeutlrabot",
-		"script"			: "./animeutlrabot.js",
+		"name"				: "animeultrabot",
+		"script"			: "./animeultrabot.js",
 		"watch"				: false,
 		"append"			: true,
 		"sourceDir"			: "./",

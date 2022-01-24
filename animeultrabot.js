@@ -605,7 +605,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 			](
 				media.filename ? {
 					source: fsCreateReadStream(media.filename)
-				} : { url: encodeURI(media.original || media.externalUrl) },
+				} : { url: encodeURI(media.externalUrl || media.original) },
 				{
 					disable_web_page_preview: true,
 					parse_mode: "HTML",
@@ -649,7 +649,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 				parse_mode: "HTML",
 				media: media.filename ? {
 					filename: fsCreateReadStream(media.filename)
-				} : { url: encodeURI(media.original || media.externalUrl) },
+				} : { url: encodeURI(media.externalUrl || media.original) },
 				type: media.type === "gif" ? "video" : media.type,
 				caption: `<a href="${encodeURI(media.original || media.externalUrl)}">Исходник файла</a>`
 			})), {
