@@ -57,6 +57,22 @@ const TGUE = iStringToUnescape => {
 };
 
 /**
+ * Prepare caption for Telegram message
+ * @param {string} iRawCaption
+ * @returns {string}
+ */
+const PrepareCaption = iRawCaption => {
+	if (!iRawCaption) return "";
+
+	const escapedCaption = TGE(TGUE(iRawCaption));
+
+	if (escapedCaption.length <= 150)
+		return escapedCaption;
+
+	return escapedCaption.slice(0, 150) + "…";
+};
+
+/**
  * @param {import("telegraf/typings/core/types/typegram").User} from
  * @param {string} [prefix="– "]
  * @returns {string}
@@ -101,5 +117,6 @@ module.exports = {
 	LoadCommandDescription,
 	SafeParseURL,
 	TGE,
-	TGUE
+	TGUE,
+	PrepareCaption
 }

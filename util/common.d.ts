@@ -31,3 +31,9 @@ export function TGE(iStringToEscape: string): string;
  * @returns {string}
  */
 export function TGUE(iStringToUnescape: string): string;
+/**
+ * Prepare caption for Telegram message
+ * @param {string} iRawCaption
+ * @returns {string}
+ */
+export function PrepareCaption(iRawCaption: string): string;

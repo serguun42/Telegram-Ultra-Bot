@@ -9,8 +9,7 @@ const {
 	GetUsername,
 	LoadCommandDescription,
 	SafeParseURL,
-	TGE,
-	TGUE
+	PrepareCaption
 } = require("./util/common");
 const { SocialPick, VideoDone } = require("./util/social-picker-api");
 
@@ -135,18 +134,21 @@ telegraf.on("text", (ctx) => {
 					return ctx.reply("<i>…как Орлов, порхай как бабочка!</i>", {
 						parse_mode: "HTML",
 						reply_to_message_id: message.message_id,
-						allow_sending_without_reply: true
+						allow_sending_without_reply: true,
+						disable_notification: true
 					}).catch(LogMessageOrError);
 				} else if (Math.random() < 0.125) {
 					if (Math.random() < 0.5)
 						return ctx.replyWithSticker(SPECIAL_PHRASE.sticker, {
 							reply_to_message_id: message.message_id,
-							allow_sending_without_reply: true
+							allow_sending_without_reply: true,
+							disable_notification: true
 						}).catch(LogMessageOrError);
 					else
 						return ctx.replyWithAnimation(SPECIAL_PHRASE.gif, {
 							reply_to_message_id: message.message_id,
-							allow_sending_without_reply: true
+							allow_sending_without_reply: true,
+							disable_notification: true
 						}).catch(LogMessageOrError);
 				}
 			}
@@ -207,7 +209,8 @@ telegraf.on("new_chat_members", (ctx) => {
 					parse_mode: "HTML",
 					disable_web_page_preview: true,
 					reply_to_message_id: message.message_id,
-					allow_sending_without_reply: true
+					allow_sending_without_reply: true,
+					disable_notification: true
 				}
 			).catch(LogMessageOrError);
 		} else if (welcome.type == "gif") {
@@ -221,7 +224,8 @@ telegraf.on("new_chat_members", (ctx) => {
 					parse_mode: "HTML",
 					disable_web_page_preview: true,
 					reply_to_message_id: message.message_id,
-					allow_sending_without_reply: true
+					allow_sending_without_reply: true,
+					disable_notification: true
 				}
 			).catch(LogMessageOrError);
 		}
@@ -252,7 +256,8 @@ const Khaleesi = (ctx) => {
 
 	ctx.reply(khaleesiedText, {
 		reply_to_message_id: replyingMessage.message_id,
-		allow_sending_without_reply: true
+		allow_sending_without_reply: true,
+		disable_notification: true
 	}).catch(LogMessageOrError);
 };
 
@@ -270,7 +275,8 @@ const Chebotarb = (ctx) => {
 
 		return ctx.replyWithSticker(randomSticker.file_id, {
 			reply_to_message_id: (replyingMessage ? replyingMessage.message_id : null),
-			allow_sending_without_reply: false
+			allow_sending_without_reply: true,
+			disable_notification: true
 		});
 	}).catch(LogMessageOrError);
 };
@@ -391,6 +397,7 @@ const MarkAsSpoiler = (ctx, target) => {
 			parse_mode: "HTML",
 			reply_to_message_id: messageToMark.reply_to_message,
 			allow_sending_without_reply: true,
+			disable_notification: true,
 			reply_markup: Markup.inlineKeyboard([
 				{
 					text: "🖼 Показать 🖼",
@@ -593,41 +600,51 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 		if (!socialPost.medias?.length) return Promise.reject(new Error("No medias in socialPost"));
 
 
-		let caption = `<i>${TGE(TGUE(socialPost.caption))}</i>\n\nОтправил ${GetUsername(ctx.from)}`;
+		let caption = `<i>${PrepareCaption(socialPost.caption)}</i>\n\nОтправил ${GetUsername(ctx.from)}`;
 
 		if (socialPost.medias.length === 1) {
 			const media = socialPost.medias[0];
 
-			ctx[
-				media.type === "photo" ? "replyWithPhoto" :
-				media.type === "gif" ? "replyWithAnimation" :
-				"replyWithVideo"
-			](
-				media.filename ? {
-					source: fsCreateReadStream(media.filename)
-				} : { url: encodeURI(media.externalUrl || media.original) },
-				{
-					disable_web_page_preview: true,
-					parse_mode: "HTML",
-					caption,
-					reply_to_message_id: (deleteSource ? null : ctx.message.message_id),
-					allow_sending_without_reply: true,
-					reply_markup: Markup.inlineKeyboard([
-						socialPost.postURL ? {
-							text: "Пост",
-							url: encodeURI(socialPost.postURL)
-						} : null,
-						socialPost.authorURL ? {
-							text: "Автор",
-							url: encodeURI(socialPost.authorURL)
-						} : null,
-						encodeURI(media.original || media.externalUrl) ? {
-							text: "Исходник",
-							url: encodeURI(media.original || media.externalUrl)
-						} : null,
-					].filter(button => !!button)).reply_markup
-				}
-			)
+			if (media.type !== "photo" && media.type !== "gif" && media.type !== "video") return;
+
+			/** @type {import("telegraf/typings/core/types/typegram").InputFile} */
+			const inputFile = (media.filename ? {
+				source: fsCreateReadStream(media.filename)
+			} : { url: encodeURI(media.externalUrl || media.original) });
+
+			/** @type {import("telegraf/typings/telegram-types").ExtraPhoto | import("telegraf/typings/telegram-types").ExtraAnimation | import("telegraf/typings/telegram-types").ExtraVideo} */
+			const extra = {
+				disable_web_page_preview: true,
+				parse_mode: "HTML",
+				caption,
+				reply_to_message_id: (deleteSource ? null : ctx.message.message_id),
+				allow_sending_without_reply: true,
+				disable_notification: true,
+				reply_markup: Markup.inlineKeyboard([
+					socialPost.postURL ? {
+						text: "Пост",
+						url: encodeURI(socialPost.postURL)
+					} : null,
+					socialPost.authorURL ? {
+						text: "Автор",
+						url: encodeURI(socialPost.authorURL)
+					} : null,
+					encodeURI(media.original || media.externalUrl || socialPost.postURL) ? {
+						text: "Исходник",
+						url: encodeURI(media.original || media.externalUrl || socialPost.postURL)
+					} : null,
+				].filter(button => !!button)).reply_markup
+			};
+
+			if (media.type === "video")
+				extra.supports_streaming = true;
+
+
+			const method = (media.type === "video" ? "replyWithVideo" :
+							media.type === "gif" ? "replyWithAnimation" :
+							"replyWithPhoto");
+
+			ctx[method](inputFile, extra)
 			.then(() => {
 				if (media.filename) VideoDone(media.filename);
 
@@ -638,29 +655,35 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 			})
 			.catch(LogMessageOrError);
 		} else {
-			caption += "\nФайлы: " + socialPost.medias.map((media, index) => `<a href="${encodeURI(media.original || media.externalUrl)}">${index + 1}</a>`).join(", ");
+			caption += "\nФайлы: " + socialPost.medias.map((media, index) => `<a href="${encodeURI(media.original || media.externalUrl || socialPost.postURL)}">${index + 1}</a>`).join(", ");
 
 			if (socialPost.medias.length > 10)
 				caption += `\nВсе иллюстраций не вместились, <a href="${encodeURI(socialPost.postURL)}">оригинальный пост</a>`;
 
 
-			ctx.replyWithMediaGroup(socialPost.medias.slice(0, 10).map((media) => ({
+			/** @type {Array<import("typegram").InputMediaPhoto | import("typegram").InputMediaVideo> | import("typegram").InputMediaAudio[] | import("typegram").InputMediaDocument[]} */
+			const mediaGroupFiles = socialPost.medias.slice(0, 10).map((media) => ({
+				media: (media.filename ? {
+					source: fsCreateReadStream(media.filename)
+				} : { url: encodeURI(media.externalUrl || media.original) }),
+				type: (media.type === "gif" ? "video" : "photo"),
+				supports_streaming: true,
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
-				media: media.filename ? {
-					filename: fsCreateReadStream(media.filename)
-				} : { url: encodeURI(media.externalUrl || media.original) },
-				type: media.type === "gif" ? "video" : media.type,
-				caption: `<a href="${encodeURI(media.original || media.externalUrl)}">Исходник файла</a>`
-			})), {
+				caption: `<a href="${encodeURI(media.original || media.externalUrl || socialPost.postURL)}">Исходник файла</a>`
+			}));
+
+			ctx.replyWithMediaGroup(mediaGroupFiles, {
 				reply_to_message_id: (deleteSource ? null : ctx.message.message_id),
-				allow_sending_without_reply: true
+				allow_sending_without_reply: true,
+				disable_notification: true
 			})
-			.then((sentMessage) => ctx.reply(caption, {
+			.then((sentMediaGroup) => ctx.reply(caption, {
 				disable_web_page_preview: true,
 				parse_mode: "HTML",
-				reply_to_message_id: sentMessage.message_id,
+				reply_to_message_id: sentMediaGroup.message_id,
 				allow_sending_without_reply: true,
+				disable_notification: true,
 				reply_markup: Markup.inlineKeyboard([
 					{
 						text: "Пост",
