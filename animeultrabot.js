@@ -1,20 +1,11 @@
-const fsCreateReadStream = require("fs").createReadStream;
+const { createReadStream } = require("fs")
 const crypto = require("crypto");
-const Telegraf = require("telegraf").Telegraf;
-const Markup = require("telegraf").Markup;
-
-const KhaleesiModule = require("./util/khaleesi");
-const LogMessageOrError = require("./util/log");
-const {
-	GetUsername,
-	LoadCommandDescription,
-	SafeParseURL,
-	PrepareCaption
-} = require("./util/common");
-const { SocialPick, VideoDone } = require("./util/social-picker-api");
-
-
+const { Telegraf, Markup } = require("telegraf");
 const DEV = require("./util/is-dev");
+const KhaleesiModule = require("khaleesi-js");
+const LogMessageOrError = require("./util/log");
+const { GetUsername, LoadCommandDescription, SafeParseURL, PrepareCaption } = require("./util/common");
+const { SocialPick, VideoDone } = require("./util/social-picker-api");
 
 /** @type {import("./types/config").Config} */
 const TELEGRAM_CONFIG = (DEV ? require("./config/telegram.dev.json") : require("./config/telegram.json"));
@@ -39,8 +30,6 @@ const COMMANDS = {
 	"chebotarb": (ctx) => Chebotarb(ctx),
 	"testcommand": `Ну и што ты здесь зобылб?`
 };
-
-
 
 const telegraf = new Telegraf(BOT_TOKEN, DEV ? {} : {
 	telegram: {
@@ -246,12 +235,10 @@ const Khaleesi = (ctx) => {
 	const replyingMessage = message.reply_to_message;
 	if (!replyingMessage) return;
 
-
-	let text = replyingMessage.text || replyingMessage.caption;
+	const text = replyingMessage.text || replyingMessage.caption;
 	if (!text) return;
 
-	let khaleesiedText = KhaleesiModule(text);
-
+	const khaleesiedText = KhaleesiModule(text);
 	if (!khaleesiedText) return;
 
 	ctx.reply(khaleesiedText, {
@@ -392,7 +379,11 @@ const MarkAsSpoiler = (ctx, target) => {
 
 		const spoilerId = StoreSpoiler(spoilerType, spoilerSource, messageToMark.caption || "");
 
-		ctx.reply(`Спойлер отправил ${GetUsername(messageToMark.from, "")}`, {
+		ctx.reply(`Спойлер с ${
+			spoilerType === "photo" ? "картинкой" :
+			spoilerType === "animation" ? "гифкой" :
+			"видео"
+		}`, {
 			disable_web_page_preview: true,
 			parse_mode: "HTML",
 			reply_to_message_id: messageToMark.reply_to_message,
@@ -519,18 +510,8 @@ const CheckForLink = (givenURL) => {
 		url.hostname === "www.kemono.party"
 	)
 		return true;
-	/* else if (
-		url.hostname === "youtube.com" ||
-		url.hostname === "www.youtube.com" ||
-		url.hostname === "youtu.be" ||
-		url.hostname === "m.youtube.com"
-	)
-		return true; */
 	else if (
-		url.hostname === "tjournal.ru" ||
-		url.hostname === "the.tj" ||
-		url.hostname === "dtf.ru" ||
-		url.hostname === "vc.ru"
+		url.hostname === "dtf.ru"
 	)
 		return true;
 	else
@@ -553,18 +534,20 @@ const CheckMessageForLinks = (ctx, message, ableToDeleteSource = false) => {
 
 	if (!messageEntities?.length) return;
 
-	const singleLink = (
+	const containsOnlyOneLink = (
 		messageEntities?.length === 1 &&
 		messageEntities[0].type === "url" &&
 		messageEntities[0].offset === 0 &&
 		messageEntities[0].length === messageText.length
 	);
 
-	if (singleLink) {
-		if (CheckForLink(messageText))
+	if (containsOnlyOneLink) {
+		const singleLink = messageText;
+
+		if (CheckForLink(singleLink))
 			return MakePost({
 				ctx,
-				givenURL: messageText,
+				givenURL: singleLink,
 				deleteSource: ableToDeleteSource
 			});
 		else
@@ -597,10 +580,11 @@ const CheckMessageForLinks = (ctx, message, ableToDeleteSource = false) => {
 const MakePost = ({ ctx, givenURL, deleteSource }) => {
 	SocialPick(givenURL)
 	.then((socialPost) => {
-		if (!socialPost.medias?.length) return Promise.reject(new Error("No medias in socialPost"));
+		/** Post does not contain any media */
+		if (!socialPost?.medias?.length) return;
 
 
-		let caption = `<i>${PrepareCaption(socialPost.caption)}</i>\n\nОтправил ${GetUsername(ctx.from)}`;
+		let caption = `<i>${PrepareCaption(socialPost.caption)}</i>`;
 
 		if (socialPost.medias.length === 1) {
 			const media = socialPost.medias[0];
@@ -609,7 +593,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 
 			/** @type {import("telegraf/typings/core/types/typegram").InputFile} */
 			const inputFile = (media.filename ? {
-				source: fsCreateReadStream(media.filename)
+				source: createReadStream(media.filename)
 			} : { url: encodeURI(media.externalUrl || media.original) });
 
 			/** @type {import("telegraf/typings/telegram-types").ExtraPhoto | import("telegraf/typings/telegram-types").ExtraAnimation | import("telegraf/typings/telegram-types").ExtraVideo} */
@@ -664,7 +648,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 			/** @type {Array<import("typegram").InputMediaPhoto | import("typegram").InputMediaVideo> | import("typegram").InputMediaAudio[] | import("typegram").InputMediaDocument[]} */
 			const mediaGroupFiles = socialPost.medias.slice(0, 10).map((media) => ({
 				media: (media.filename ? {
-					source: fsCreateReadStream(media.filename)
+					source: createReadStream(media.filename)
 				} : { url: encodeURI(media.externalUrl || media.original) }),
 				type: (media.type === "gif" ? "video" : "photo"),
 				supports_streaming: true,
@@ -708,7 +692,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 			.catch(LogMessageOrError);
 		}
 	})
-	.catch((e) => LogMessageOrError(new Error("Making post"), e));
+	.catch((e) => LogMessageOrError(new Error(`Making post <givenURL = ${givenURL}>`), e));
 };
 
 process.on("unhandledRejection", (reason, promise) => {

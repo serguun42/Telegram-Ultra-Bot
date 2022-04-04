@@ -78,7 +78,7 @@ const PrepareCaption = iRawCaption => {
  * @returns {string}
  */
 const GetUsername = (from, prefix = "– ") => {
-	if (from.username === ADMIN.username) return TGE("Почтой России");
+	if (from.username === ADMIN.username) return TGE("через «Почту России»");
 
 	return `${TGE(prefix)}<a href="${from.username ? `https://t.me/${from.username}` : `tg://user?id=${from.id}`}">${TGE(from.first_name)}${from.last_name ? " " + TGE(from.last_name) : ""}</a>`;
 };
