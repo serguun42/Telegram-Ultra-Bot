@@ -24,7 +24,7 @@ const COMMANDS = {
 	"help": LoadCommandDescription("help", TELEGRAM_CONFIG),
 	"start": LoadCommandDescription("help", TELEGRAM_CONFIG),
 	"aboutpicker": LoadCommandDescription("aboutpicker", TELEGRAM_CONFIG),
-	"pickerlist": LoadCommandDescription("pickerlist", TELEGRAM_CONFIG),
+	"aboutlist": LoadCommandDescription("aboutlist", TELEGRAM_CONFIG),
 	"aboutspoiler": LoadCommandDescription("aboutspoiler", TELEGRAM_CONFIG),
 	"khaleesi": (ctx) => Khaleesi(ctx),
 	"chebotarb": (ctx) => Chebotarb(ctx),
@@ -61,9 +61,7 @@ telegraf.on("text", (ctx) => {
 		const { text } = message;
 		if (!text) return false;
 
-
 		if (BLACKLIST.includes(from.username) || BLACKLIST.includes(from.id)) return false;
-
 
 		const commandMatch = text.match(new RegExp(`^\\/([\\w]+)(\\@${BOT_USERNAME})?$`, "i"));
 

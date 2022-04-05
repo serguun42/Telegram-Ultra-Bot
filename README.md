@@ -1,7 +1,7 @@
 # Anime Ultra Bot
 ## Что умеет?
 
-* Обрабатывать ссылки на ресурсы, заменяя их контентом, находящимся по этим ссылкам – см. репозиторий [Social-Picker-API](https://github.com/serguun42/Social-Picker-API) и команды [aboutpicker](./commands/aboutpicker.txt) и [pickerlist](./commands/pickerlist.txt).
+* Обрабатывать ссылки на ресурсы, заменяя их контентом, находящимся по этим ссылкам – см. репозиторий [Social-Picker-API](https://github.com/serguun42/Social-Picker-API) и команды [aboutpicker](./commands/aboutpicker.txt) и [aboutlist](./commands/aboutlist.txt).
 * Скрывать спойлеры командой /spoiler – см. [aboutspoiler](./commands/aboutspoiler.txt).
 * Приветствовать новых пользователей.
 * *Кхалиси*фицировать текст на русском языке (изменяет на текст сообщения, на которое ответили командой `/khaleesi`) – см. [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS).
