@@ -15,7 +15,7 @@ const SOCIAL_PICKER_API_BASE = `http${
 
 /**
  * @param {string} givenURL
- * @returns {Promise<import("../types").SocialPost>}
+ * @returns {Promise<import("../types/social_post").SocialPost>}
  */
 const SocialPick = (givenURL) => {
 	return NodeFetch(new URL(`/?url=${encodeURIComponent(givenURL)}`, SOCIAL_PICKER_API_BASE).href)
@@ -23,7 +23,7 @@ const SocialPick = (givenURL) => {
 		if (res.status === 200)
 			return res.json();
 		else
-			return Promise.reject(new Error(`Status code: ${res.status} ${res.statusText}`));
+			return Promise.reject(`SocialPick / Status code: ${res.status} ${res.statusText}`);
 	});
 }
 
@@ -35,7 +35,7 @@ const VideoDone = (filename) => {
 	NodeFetch(new URL(`/?video-done=${encodeURIComponent(filename)}`, SOCIAL_PICKER_API_BASE).href)
 	.then((res) => {
 		if (res.status !== 200)
-			return Promise.reject(new Error(`Status code: ${res.status} ${res.statusText}`));
+			return Promise.reject(`VideoDone / Status code: ${res.status} ${res.statusText}`);
 	})
 	.catch((e) => LogMessageOrError(`Social-Picker-API / Video done`, e));
 }

@@ -1,6 +1,6 @@
 {
   "name": "animeultrabot",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "",
   "main": "animeultrabot.js",
   "type": "commonjs",
@@ -12,18 +12,28 @@
     "type": "git",
     "url": "git+https://github.com/serguun42/Anime-Ultra-Bot.git"
   },
-  "keywords": [],
+  "keywords": [
+    "instagram",
+    "reddit",
+    "telegram",
+    "twitter-api",
+    "booru",
+    "danbooru",
+    "telegraf",
+    "pixiv",
+    "gelbooru"
+  ],
   "author": "serguun42",
   "license": "BSL-1.0 License",
   "dependencies": {
     "khaleesi-js": "github:serguun42/Khaleesi-JS",
     "node-fetch": "2.6.7",
     "pm2": "5.2.0",
-    "telegraf": "4.7.0"
+    "telegraf": "4.8.1"
   },
   "devDependencies": {
-    "@types/node": "17.0.23",
-    "nodemon": "2.0.15",
-    "typescript": "4.6.3"
+    "@types/node": "17.0.31",
+    "nodemon": "2.0.16",
+    "typescript": "4.6.4"
   }
 }

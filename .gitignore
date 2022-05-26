@@ -4,9 +4,11 @@ logo/
 out/
 test/
 resources/
+database/
 
 tsconfig.json
 package-lock.json
 *.bat
 *.sh
 *.dev.*
+*.local.*

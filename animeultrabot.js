@@ -6,6 +6,7 @@ const KhaleesiModule = require("khaleesi-js");
 const LogMessageOrError = require("./util/log");
 const { GetUsername, LoadCommandDescription, SafeParseURL, PrepareCaption } = require("./util/common");
 const { SocialPick, VideoDone } = require("./util/social-picker-api");
+const { SaveSpoilers, RestoreSpoilers } = require("./util/store-spoilers");
 
 /** @type {import("./types/config").Config} */
 const TELEGRAM_CONFIG = (DEV ? require("./config/telegram.dev.json") : require("./config/telegram.json"));
@@ -56,7 +57,7 @@ telegraf.on("text", (ctx) => {
 
 
 	if (chat && chat.type === "private") {
-		LogMessageOrError(`Private chat with user ${from.id} (@${from.username || "NO_USERNAME"}) – ${new Date().toISOString()}. Text: ${message.text}`);
+		LogMessageOrError(`Private chat – ${from.first_name} ${from.last_name || ""} (lang: ${from.language_code}) (${from.username ? "@" + from.username : "ID: " + from.id}) – Text: ${message.text}`);
 
 		const { text } = message;
 		if (!text) return false;
@@ -293,27 +294,30 @@ const CheckCommandAvailability = (from) => {
 
 
 
-/** @type {{ id: string, type: "animation" | "photo" | "video", file_id: string, caption: string }[]} */
+/** @type {import("./types/spoilers").SpoilersStorage} */
 const SPOILERS = [];
+RestoreSpoilers(SPOILERS).catch(LogMessageOrError);
 
 /**
- * @param {"animation" | "photo" | "video"} spoilerType
- * @param {string} spoilerSource
+ * @param {SpoilerTypeEnum} type
+ * @param {string} source
  * @param {string} [caption]
  * @returns {string}
  */
-const StoreSpoiler = (spoilerType, spoilerSource, caption) => {
-	const spoilerId = crypto.createHash("md5").update(`${SPOILERS.length}_${Date.now()}`).digest("hex");
+const StoreSpoiler = (type, source, caption = "") => {
+	const id = crypto.createHash("md5").update(`${SPOILERS.length}_${Date.now()}`).digest("hex");
 
 	SPOILERS.push({
-		id: spoilerId,
-		type: spoilerType,
-		file_id: spoilerSource,
+		id,
+		type,
+		source,
 		caption: (typeof caption == "string" ? caption : "")
 	});
 
-	return spoilerId;
-}
+	SaveSpoilers(SPOILERS);
+
+	return id;
+};
 
 telegraf.action(/^SPOILER(\w+)/, (ctx) => {
 	const { from } = ctx;
@@ -327,16 +331,14 @@ telegraf.action(/^SPOILER(\w+)/, (ctx) => {
 	if (!foundStoredSpoiler)
 		return LocalFail();
 
+	const argsToSend = [from.id, foundStoredSpoiler.source, { caption: foundStoredSpoiler?.caption || null }];
 
 	const action = (
-		foundStoredSpoiler.type === "photo" ?
-			telegram.sendPhoto(from.id, foundStoredSpoiler.file_id, { caption: foundStoredSpoiler?.caption || null })
-		:
-			(foundStoredSpoiler.type === "animation" ?
-				telegram.sendAnimation(from.id, foundStoredSpoiler.file_id, { caption: foundStoredSpoiler?.caption || null })
-			:
-				telegram.sendVideo(from.id, foundStoredSpoiler.file_id, { caption: foundStoredSpoiler?.caption || null })
-			));
+		foundStoredSpoiler.type === "photo" ? telegram.sendPhoto(...argsToSend) :
+		foundStoredSpoiler.type === "animation" ? telegram.sendAnimation(...argsToSend) :
+		foundStoredSpoiler.type === "video" ? telegram.sendVideo(...argsToSend) :
+		Promise.reject(`Unknown action with spoiler: ${JSON.stringify(foundStoredSpoiler)}`)
+	);
 
 	action
 	.then(() => ctx.answerCbQuery("Отправил тебе в ЛС!"))
@@ -364,23 +366,31 @@ const MarkAsSpoiler = (ctx, target) => {
 	 * @returns {void}
 	 */
 	const LocalMarkByMessage = (messageToMark, messagesToDelete) => {
-		const spoilerType = (messageToMark["photo"] ? "photo" :
-							messageToMark["animation"] ? "animation" :
-							"video");
+		/** @type {import("./types/spoilers").SpoilerTypeEnum} */
+		const spoilerType = (
+			messageToMark["photo"] ? "photo" :
+			messageToMark["animation"] ? "animation" :
+			messageToMark["video"] ? "video" :
+			"nothing-to-hide"
+		);
 
-		const spoilerSource = (spoilerType === "photo" ? messageToMark["photo"]?.pop()?.file_id :
-						spoilerType === "animation" ? messageToMark["animation"]?.file_id :
-						messageToMark["video"]?.file_id);
+		const spoilerSource = (
+			spoilerType === "photo" ? messageToMark["photo"]?.pop()?.file_id :
+			spoilerType === "animation" ? messageToMark["animation"]?.file_id :
+			spoilerType === "video" ? messageToMark["video"]?.file_id :
+			""
+		);
 
 		if (!spoilerSource)
-			return LogMessageOrError(new Error(`No <source> to hide in <messageToMark>, <hidingType> = ${spoilerType}`));
+			return LogMessageOrError(new Error(`No <spoilerSource> to hide in <messageToMark>, <spoilerType> = ${spoilerType}, <messageToMark> = ${JSON.stringify(messageToMark, false, "\t")}`));
 
 		const spoilerId = StoreSpoiler(spoilerType, spoilerSource, messageToMark.caption || "");
 
 		ctx.reply(`Спойлер с ${
 			spoilerType === "photo" ? "картинкой" :
 			spoilerType === "animation" ? "гифкой" :
-			"видео"
+			spoilerType === "video" ? "видео" :
+			"💩"
 		}`, {
 			disable_web_page_preview: true,
 			parse_mode: "HTML",
@@ -690,7 +700,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 			.catch(LogMessageOrError);
 		}
 	})
-	.catch((e) => LogMessageOrError(new Error(`Making post <givenURL = ${givenURL}>`), e));
+	.catch((e) => LogMessageOrError(`Making post ${givenURL}`, e));
 };
 
 process.on("unhandledRejection", (reason, promise) => {
@@ -698,3 +708,8 @@ process.on("unhandledRejection", (reason, promise) => {
 
 	LogMessageOrError("Unhandled Rejection at: Promise", promise, "reason:", reason);
 });
+
+
+
+process.once("SIGINT", () => telegraf.stop("SIGINT"));
+process.once("SIGTERM", () => telegraf.stop("SIGTERM"));
