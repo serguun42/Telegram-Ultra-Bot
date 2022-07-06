@@ -515,7 +515,8 @@ const CheckForLink = (givenURL) => {
 		return true;
 	else if (
 		url.hostname === "kemono.party" ||
-		url.hostname === "www.kemono.party"
+		url.hostname === "www.kemono.party" ||
+		url.hostname === "beta.kemono.party"
 	)
 		return true;
 	else if (
@@ -647,7 +648,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 			})
 			.catch(LogMessageOrError);
 		} else {
-			caption += "\nФайлы: " + socialPost.medias.map((media, index) => `<a href="${encodeURI(media.original || media.externalUrl || socialPost.postURL)}">${index + 1}</a>`).join(", ");
+			caption += "\nФайлы: " + socialPost.medias.slice(0, 10).map((media, index) => `<a href="${encodeURI(media.original || media.externalUrl || socialPost.postURL)}">${index + 1}</a>`).join(", ");
 
 			if (socialPost.medias.length > 10)
 				caption += `\nВсе иллюстраций не вместились, <a href="${encodeURI(socialPost.postURL)}">оригинальный пост</a>`;

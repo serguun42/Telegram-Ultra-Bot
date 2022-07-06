@@ -1,4 +1,9 @@
 # Anime Ultra Bot
+
+*Sadly, bot is designed to give descriptions, help information and about texts in Russian language so there is no point in translating only this readme. If are still interested in this project with any other language, feel free to open an issue – I'll add capability for i18n configuration.*
+
+---
+
 ## Что умеет?
 
 * Обрабатывать ссылки на ресурсы, заменяя их контентом, находящимся по этим ссылкам – см. репозиторий [Social-Picker-API](https://github.com/serguun42/Social-Picker-API) и команды [aboutpicker](./commands/aboutpicker.txt) и [aboutlist](./commands/aboutlist.txt).
