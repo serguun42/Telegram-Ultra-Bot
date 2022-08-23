@@ -439,10 +439,7 @@ const CheckForLink = (givenURL) => {
 	if (
 		url.hostname === "twitter.com" ||
 		url.hostname === "www.twitter.com" ||
-		url.hostname === "mobile.twitter.com"
-	)
-		return true;
-	else if (
+		url.hostname === "mobile.twitter.com" ||
 		url.hostname === "nitter.net" ||
 		url.hostname === "www.nitter.net" ||
 		url.hostname === "mobile.nitter.net"
@@ -459,7 +456,8 @@ const CheckForLink = (givenURL) => {
 		return true;
 	else if (
 		url.hostname === "reddit.com" ||
-		url.hostname === "www.reddit.com"
+		url.hostname === "www.reddit.com" ||
+		url.hostname === "old.reddit.com"
 	)
 		return true;
 	else if (
