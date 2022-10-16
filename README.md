@@ -24,7 +24,7 @@
 * * white-list пользователей для использования команд (нет таймаута)
 * * данные админа
 * * приветствия, специальные фразы и стикеры, прочее
-* [`social-picker-service.json`](./config/social-picker-service.json)
+* [`social-picker.json`](./config/social-picker.json)
 * * адреса и порт сервиса [Social Picker API](https://github.com/serguun42/Social-Picker-API)
 * [`pm2.production.json`](./config/pm2.production.json) – config for Node.js daemon `pm2`
 * [`nodemon.dev.json`](./config/nodemon.dev.json) – config development hot-reloader `nodemon`

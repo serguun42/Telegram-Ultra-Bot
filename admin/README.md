@@ -7,4 +7,4 @@ Close instance on local server
 Log out from cloud server
 
 ### `animeultrabot.mailing.js`
-Send message to all chatss
+Send message to all chats

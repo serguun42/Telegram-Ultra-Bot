@@ -45,7 +45,7 @@
 			}
 		}
 	],
-	"WHITELIST": [
+	"PRIVILEGE_LIST": [
 		"user1",
 		"user2",
 		"user3 и т.д."

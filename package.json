@@ -1,12 +1,13 @@
 {
   "name": "animeultrabot",
-  "version": "2.1.0",
-  "description": "",
+  "version": "3.0.0",
+  "description": "Telegram bot based on Social-Picker-API. Includes features from Anime-Twitter-Picker Bot, Anime Spoiler Bot and Anime Welcomer Bot",
   "main": "animeultrabot.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "production": "pm2 start config/pm2.production.json",
-    "dev": "nodemon animeultrabot.js --config config/nodemon.dev.json"
+    "dev": "nodemon animeultrabot.js --config config/nodemon.dev.json",
+    "lint": "eslint . --ext .js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },
   "repository": {
     "type": "git",
@@ -27,13 +28,19 @@
   "license": "BSL-1.0 License",
   "dependencies": {
     "khaleesi-js": "github:serguun42/Khaleesi-JS",
-    "node-fetch": "2.6.7",
-    "pm2": "5.2.0",
-    "telegraf": "4.8.1"
+    "node-fetch": "3.2.10",
+    "pm2": "5.2.2",
+    "telegraf": "4.10.0"
   },
   "devDependencies": {
-    "@types/node": "17.0.31",
-    "nodemon": "2.0.16",
-    "typescript": "4.6.4"
+    "@types/node": "18.11.0",
+    "eslint": "8.25.0",
+    "eslint-config-airbnb-base": "15.0.0",
+    "eslint-config-prettier": "8.5.0",
+    "eslint-plugin-import": "2.26.0",
+    "eslint-plugin-prettier": "4.2.1",
+    "nodemon": "2.0.20",
+    "prettier": "2.7.1",
+    "typescript": "4.8.4"
   }
 }

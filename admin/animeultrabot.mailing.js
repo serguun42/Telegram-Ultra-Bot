@@ -1,20 +1,18 @@
-const DEV = require("../util/is-dev");
-const Telegraf = require("telegraf");
+/* eslint-disable max-len */
+/* eslint-disable no-console */
+import { Telegraf } from 'telegraf';
+import { LoadTelegramConfig } from '../util/load-configs.js';
 
-const {
-	BOT_TOKEN,
-	CHATS_LIST
-} = (DEV ? require("../config/telegram.dev.json") : require("../config/telegram.json"));
+const { BOT_TOKEN, CHATS_LIST } = LoadTelegramConfig();
 
-
-
-const telegraf = new Telegraf.Telegraf(BOT_TOKEN);
-const telegram = telegraf.telegram;
-
-
+const telegraf = new Telegraf(BOT_TOKEN);
+const { telegram } = telegraf;
 
 CHATS_LIST.forEach((chat) => {
-	telegram.sendMessage(chat.id, `Бот обновился:
+  telegram
+    .sendMessage(
+      chat.id,
+      `Бот обновился:
 • добавлена поддержка Kemono Party, Очобы.
 • Пофиксил Reddit – особенно галереи и гифки.
 • Из нового:
@@ -23,7 +21,8 @@ CHATS_LIST.forEach((chat) => {
 • • теперь в спойлеры можно засовывать не только картинки, но и гифки и видео
 • • убрал оценки и текстовые спойлеры – с Telegram неплохо нативно поддерживает это.
 
-Запуск бота через 15 мин.`)
-		.then(console.log)
-		.catch(console.warn);
+Запуск бота через 15 мин.`
+    )
+    .then(console.log)
+    .catch(console.warn);
 });

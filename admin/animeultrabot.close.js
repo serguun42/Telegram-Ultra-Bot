@@ -1,17 +1,13 @@
-const DEV = require("../util/is-dev");
-const Telegraf = require("telegraf");
+/* eslint-disable no-console */
+import { Telegraf } from 'telegraf';
+import { LoadTelegramConfig } from '../util/load-configs.js';
 
-const {
-	BOT_TOKEN
-} = (DEV ? require("../config/telegram.dev.json") : require("../config/telegram.json"));
+const { BOT_TOKEN } = LoadTelegramConfig();
 
+const telegraf = new Telegraf(BOT_TOKEN);
+const { telegram } = telegraf;
 
-
-const telegraf = new Telegraf.Telegraf(BOT_TOKEN);
-const telegram = telegraf.telegram;
-
-
-
-telegram.close()
-	.then((success) => console.log(`Close success: ${success}`))
-	.catch(console.warn);
+telegram
+  .close()
+  .then((success) => console.log(`Close success: ${success}`))
+  .catch(console.warn);
