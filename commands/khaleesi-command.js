@@ -18,7 +18,7 @@ const KhaleesiCommand = (ctx) => {
   if (!khaleesiedText) return;
 
   ctx
-    .reply(khaleesiedText, {
+    .sendMessage(khaleesiedText, {
       reply_to_message_id: replyingMessage.message_id,
       allow_sending_without_reply: true,
       disable_notification: true,

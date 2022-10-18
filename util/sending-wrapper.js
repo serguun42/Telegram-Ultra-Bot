@@ -1,35 +1,56 @@
 import { TelegramError } from 'telegraf';
 import LogMessageOrError from './log.js';
 
+const SECOND = 1000;
+const QUEUE_STEP = SECOND * 2;
+let queueSize = 0;
+
+/**
+ * @typedef {() => Promise<any>} Action
+ */
+/**
+ * @param {Action} action
+ * @param {number} [timeout]
+ * @returns {Promise<any>}
+ */
+const AddToQueue = (action, timeout) =>
+  new Promise((resolve, reject) => {
+    if (queueSize < 0) queueSize = 0;
+    const currentActionTimeout = (timeout || 0) + QUEUE_STEP * queueSize++;
+
+    setTimeout(
+      () =>
+        action()
+          .then(resolve)
+          .catch(reject)
+          .finally(() => {
+            --queueSize;
+          }),
+      currentActionTimeout
+    );
+  });
+
 /**
  * Queues requests to Telegram, handles some errors
- * @template T
- * @param {() => Promise<T>} action
- * @param {number} [level]
- * @returns {Promise<T>}
+ * @param {Action} action
+ * @param {number} [presetTimeout]
+ * @param {number} [recursionLevel]
+ * @returns {Promise<any>}
  */
-const SendingWrapper = (action, level = 0) => {
+const SendingWrapper = (action, presetTimeout = 0, recursionLevel = 0) => {
   if (!action || !(action instanceof Function)) return Promise.resolve();
 
-  return action().catch(
+  return AddToQueue(action, presetTimeout).catch(
     /** @param {Error} e */ (e) => {
-      if (level > 2) return Promise.reject(e);
+      if (recursionLevel > 3) return Promise.reject(e);
 
       if (e instanceof TelegramError) {
         if (e.code === 429) {
-          LogMessageOrError(
-            new Error(`Telegram: response 429, waiting for ${e.response?.parameters?.retry_after || 30} seconds`)
-          );
+          const newTimeout = (e.response?.parameters?.retry_after || 30) * SECOND;
 
-          return new Promise((resolve, reject) => {
-            setTimeout(
-              () =>
-                SendingWrapper(action, level + 1)
-                  .then(resolve)
-                  .catch(reject),
-              (e.response?.parameters?.retry_after || 30) * 1000
-            );
-          });
+          LogMessageOrError(`Telegram error: response 429, waiting for ${newTimeout / SECOND} seconds`);
+
+          return SendingWrapper(action, newTimeout, recursionLevel + 1);
         }
 
         return Promise.reject(e);

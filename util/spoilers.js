@@ -125,7 +125,7 @@ export const MarkSpoiler = (ctx, target) => {
     const spoilerId = StoreSpoiler(spoilerType, spoilerSource, messageToMark.caption || '');
 
     ctx
-      .reply(
+      .sendMessage(
         `Спойлер с ${
           spoilerType === 'photo'
             ? 'картинкой'

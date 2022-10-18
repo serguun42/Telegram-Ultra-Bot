@@ -18,7 +18,7 @@ const ChebotarbCommand = (ctx, telegram) => {
     .then((stickerSet) => {
       const randomSticker = stickerSet.stickers[Math.floor(Math.random() * stickerSet.stickers.length)];
 
-      return ctx.replyWithSticker(randomSticker.file_id, {
+      return ctx.sendSticker(randomSticker.file_id, {
         reply_to_message_id: replyingMessage ? replyingMessage.message_id : null,
         allow_sending_without_reply: true,
         disable_notification: true,

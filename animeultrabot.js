@@ -13,10 +13,6 @@ import ChebotarbCommand from './commands/chebotarb-command.js';
 import LoadCommand from './commands/load-command.js';
 import SendingWrapper from './util/sending-wrapper.js';
 
-/** @typedef {import("./types/telegraf").DefaultMessage} DefaultMessage */
-/** @typedef {import("./types/telegraf").TelegramContext} TelegramContext */
-/** @typedef {import("./types/telegraf").TelegramFromObject} TelegramFromObject */
-
 const TELEGRAM_CONFIG = LoadTelegramConfig();
 
 const { BOT_TOKEN, BOT_USERNAME, CHATS_LIST, SPECIAL_PHRASE, LOCAL_BOT_API_SERVER } = TELEGRAM_CONFIG;
@@ -82,7 +78,7 @@ telegraf.on('text', (ctx) => {
 
     if (typeof commandAction === 'string') {
       SendingWrapper(() =>
-        ctx.reply(commandAction, {
+        ctx.sendMessage(commandAction, {
           disable_web_page_preview: true,
           parse_mode: 'HTML',
         })
@@ -105,7 +101,7 @@ telegraf.on('text', (ctx) => {
 
     if (chance < 1 / 8)
       ctx
-        .reply('<i>…как Орлов, порхай как бабочка!</i>', {
+        .sendMessage('<i>…как Орлов, порхай как бабочка!</i>', {
           parse_mode: 'HTML',
           reply_to_message_id: message.message_id,
           allow_sending_without_reply: true,
@@ -114,7 +110,7 @@ telegraf.on('text', (ctx) => {
         .catch(LogMessageOrError);
     else if (chance < 1 / 4)
       ctx
-        .replyWithSticker(SPECIAL_PHRASE.sticker, {
+        .sendSticker(SPECIAL_PHRASE.sticker, {
           reply_to_message_id: message.message_id,
           allow_sending_without_reply: true,
           disable_notification: true,
@@ -122,7 +118,7 @@ telegraf.on('text', (ctx) => {
         .catch(LogMessageOrError);
     else
       ctx
-        .replyWithAnimation(SPECIAL_PHRASE.gif, {
+        .sendAnimation(SPECIAL_PHRASE.gif, {
           reply_to_message_id: message.message_id,
           allow_sending_without_reply: true,
           disable_notification: true,
@@ -176,7 +172,7 @@ telegraf.on('new_chat_members', (ctx) => {
 
     if (welcome.type === 'text') {
       ctx
-        .reply(
+        .sendMessage(
           welcome.message.replace('__USERNAME__', GetUsername(message.new_chat_member || message.new_chat_members[0])),
           {
             parse_mode: 'HTML',
@@ -189,7 +185,7 @@ telegraf.on('new_chat_members', (ctx) => {
         .catch(LogMessageOrError);
     } else if (welcome.type === 'gif') {
       ctx
-        .replyWithAnimation(
+        .sendAnimation(
           welcome.message.filename ? { source: createReadStream(welcome.message.filename) } : welcome.message.file_id,
           {
             caption: welcome.message.caption

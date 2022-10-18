@@ -63,10 +63,10 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
 
         SendingWrapper(() =>
           media.type === 'video'
-            ? ctx.replyWithVideo(inputFile, extra)
+            ? ctx.sendVideo(inputFile, extra)
             : media.type === 'gif'
-            ? ctx.replyWithAnimation(inputFile, extra)
-            : ctx.replyWithPhoto(inputFile, extra)
+            ? ctx.sendAnimation(inputFile, extra)
+            : ctx.sendPhoto(inputFile, extra)
         )
           .then(() => {
             if (media.filename) VideoDone(media.filename);
@@ -104,7 +104,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
         }));
 
         SendingWrapper(() =>
-          ctx.replyWithMediaGroup(mediaGroupItems, {
+          ctx.sendMediaGroup(mediaGroupItems, {
             reply_to_message_id: deleteSource ? null : ctx.message.message_id,
             allow_sending_without_reply: true,
             disable_notification: true,
@@ -112,7 +112,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
         )
           .then((sentMediaGroup) =>
             SendingWrapper(() =>
-              ctx.reply(caption, {
+              ctx.sendMessage(caption, {
                 disable_web_page_preview: true,
                 parse_mode: 'HTML',
                 reply_to_message_id: sentMediaGroup.message_id,

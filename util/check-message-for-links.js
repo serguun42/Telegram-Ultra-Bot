@@ -29,8 +29,9 @@ const CheckForLink = (givenURL) => {
   )
     return true;
   if (url.hostname === 'pixiv.net' || url.hostname === 'www.pixiv.net') return true;
+  if (url.hostname === 'i.pximg.net') return true;
   if (/tumblr\.(com|co\.\w+|org)$/i.test(url.hostname || '')) return true;
-  if (url.hostname === 'danbooru.donmai.us' || url.origin === 'https://danbooru.donmai.us') return true;
+  if (url.hostname === 'danbooru.donmai.us') return true;
   if (url.hostname === 'gelbooru.com' || url.hostname === 'www.gelbooru.com') return true;
   if (
     url.hostname === 'konachan.com' ||
@@ -41,7 +42,7 @@ const CheckForLink = (givenURL) => {
     return true;
   if (url.hostname === 'yande.re' || url.hostname === 'www.yande.re') return true;
   if (url.hostname === 'e-shuushuu.net' || url.hostname === 'www.e-shuushuu.net') return true;
-  if (url.hostname === 'chan.sankakucomplex.com' || url.origin === 'https://chan.sankakucomplex.com') return true;
+  if (url.hostname === 'chan.sankakucomplex.com') return true;
   if (url.hostname === 'zerochan.net' || url.hostname === 'www.zerochan.net') return true;
   if (url.hostname === 'anime-pictures.net' || url.hostname === 'www.anime-pictures.net') return true;
   if (url.hostname === 'kemono.party' || url.hostname === 'www.kemono.party' || url.hostname === 'beta.kemono.party')
@@ -53,7 +54,7 @@ const CheckForLink = (givenURL) => {
 /**
  * Checks whole message for links and make post with them
  *
- * @param {TelegramContext} ctx
+ * @param {import('../types/telegraf').TelegramContext} ctx
  * @param {import("telegraf/typings/core/types/typegram").Message} message
  * @param {boolean} [ableToDeleteSource]
  * @returns {void}

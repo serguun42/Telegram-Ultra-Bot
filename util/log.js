@@ -7,12 +7,14 @@ import DEV from './is-dev.js';
  * @returns {void}
  */
 const LogMessageOrError = (...args) => {
-  const containsAnyError = args.some((message) => message instanceof Error);
-  const out = containsAnyError ? console.error : console.log;
+  const containsError = args.some(
+    (message) => message instanceof Error || (typeof message === 'string' && /test/i.test(message))
+  );
+  const out = containsError ? console.error : console.log;
 
   out(new Date());
   out(...args);
-  out('~~~~~~~~~~~\n\n');
+  out(Array.from({ length: 30 }, () => '~').join(''));
 
   if (DEV) writeFile('./out/logmessageorerror.json', JSON.stringify(args, false, '\t')).catch(console.warn);
 };
