@@ -8,6 +8,7 @@ import { GetSpoiler, MarkSpoiler } from './util/spoilers.js';
 import { LoadTelegramConfig } from './util/load-configs.js';
 import CheckCommandAvailability from './util/check-command-availability.js';
 import CheckMessageForLinks from './util/check-message-for-links.js';
+import DeleteCommand from './commands/delete-command.js';
 import KhaleesiCommand from './commands/khaleesi-command.js';
 import ChebotarbCommand from './commands/chebotarb-command.js';
 import LoadCommand from './commands/load-command.js';
@@ -35,9 +36,14 @@ const COMMANDS = {
   aboutpicker: LoadCommand('aboutpicker', TELEGRAM_CONFIG),
   aboutlist: LoadCommand('aboutlist', TELEGRAM_CONFIG),
   aboutspoiler: LoadCommand('aboutspoiler', TELEGRAM_CONFIG),
+  aboutdelete: LoadCommand('aboutdelete', TELEGRAM_CONFIG),
+  delete: (ctx) => DeleteCommand(ctx),
   khaleesi: (ctx) => KhaleesiCommand(ctx),
   chebotarb: (ctx) => ChebotarbCommand(ctx, telegram),
-  testcommand: `Ну и што ты здесь зобылб?`,
+  testcommand: `TmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXAKTmV2ZXIgZ29ubmEgbGV0IHlvdSBkb3du\
+Ck5ldmVyIGdvbm5hIHJ1biBhcm91bmQgYW5kIGRlc2VydCB5b3UKTmV2ZXIgZ29u\
+bmEgbWFrZSB5b3UgY3J5Ck5ldmVyIGdvbm5hIHNheSBnb29kYnllCk5ldmVyIGdv\
+bm5hIHRlbGwgYSBsaWUgYW5kIGh1cnQgeW91`,
 };
 
 const botStartedTime = Date.now();

@@ -2,6 +2,7 @@ import { createReadStream } from 'fs';
 import { Markup } from 'telegraf';
 import { PrepareCaption } from './common.js';
 import LogMessageOrError from './log.js';
+import { MarkSender } from './senders.js';
 import SendingWrapper from './sending-wrapper.js';
 import { SocialPick, VideoDone } from './social-picker.js';
 
@@ -10,6 +11,8 @@ import { SocialPick, VideoDone } from './social-picker.js';
  * @returns {void}
  */
 const MakePost = ({ ctx, givenURL, deleteSource }) => {
+  const { from } = ctx;
+
   SocialPick(givenURL)
     .then((socialPost) => {
       /** Post does not contain any media */
@@ -25,6 +28,8 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
         /** @type {import("telegraf/typings/core/types/typegram").InputFile} */
         const inputFile = media.filename
           ? { source: createReadStream(media.filename) }
+          : media.type === 'gif'
+          ? encodeURI(media.externalUrl || media.original)
           : { url: encodeURI(media.externalUrl || media.original) };
 
         /** @type {import("../types/telegraf").DefaultExtra} */
@@ -55,7 +60,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
                     url: encodeURI(media.original || media.externalUrl || socialPost.postURL),
                   }
                 : null,
-            ].filter((button) => !!button)
+            ].filter(Boolean)
           ).reply_markup,
         };
 
@@ -68,12 +73,16 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
             ? ctx.sendAnimation(inputFile, extra)
             : ctx.sendPhoto(inputFile, extra)
         )
-          .then(() => {
-            if (media.filename) VideoDone(media.filename);
+          .then(
+            /** @param {import('../types/telegraf').DefaultMessage} sentMessage */ (sentMessage) => {
+              if (media.filename) VideoDone(media.filename);
 
-            if (deleteSource) return SendingWrapper(() => ctx.deleteMessage(ctx.message.message_id));
-            return Promise.resolve(true);
-          })
+              MarkSender(sentMessage, from.id);
+
+              if (deleteSource) return SendingWrapper(() => ctx.deleteMessage(ctx.message.message_id));
+              return Promise.resolve(true);
+            }
+          )
           .catch(LogMessageOrError);
       } else {
         caption += `\nФайлы: ${socialPost.medias
@@ -110,31 +119,37 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
             disable_notification: true,
           })
         )
-          .then((sentMediaGroup) =>
-            SendingWrapper(() =>
-              ctx.sendMessage(caption, {
-                disable_web_page_preview: true,
-                parse_mode: 'HTML',
-                reply_to_message_id: sentMediaGroup.message_id,
-                allow_sending_without_reply: true,
-                disable_notification: true,
-                reply_markup: Markup.inlineKeyboard([
-                  {
-                    text: 'Пост',
-                    url: encodeURI(socialPost.postURL),
-                  },
-                  {
-                    text: 'Автор',
-                    url: encodeURI(socialPost.authorURL),
-                  },
-                ]).reply_markup,
-              })
-            )
+          .then(
+            /** @param {import('../types/telegraf').DefaultMessage[]} sentMediaGroup */ (sentMediaGroup) => {
+              sentMediaGroup.forEach((sentMessage) => MarkSender(sentMessage, from.id));
+
+              return SendingWrapper(() =>
+                ctx.sendMessage(caption, {
+                  disable_web_page_preview: true,
+                  parse_mode: 'HTML',
+                  reply_to_message_id: sentMediaGroup.message_id,
+                  allow_sending_without_reply: true,
+                  disable_notification: true,
+                  reply_markup: Markup.inlineKeyboard([
+                    {
+                      text: 'Пост',
+                      url: encodeURI(socialPost.postURL),
+                    },
+                    {
+                      text: 'Автор',
+                      url: encodeURI(socialPost.authorURL),
+                    },
+                  ]).reply_markup,
+                })
+              );
+            }
           )
-          .then(() => {
+          .then((sentMessage) => {
             socialPost.medias.forEach((media) => {
               if (media.filename) VideoDone(media.filename);
             });
+
+            MarkSender(sentMessage, from.id);
 
             if (deleteSource) return SendingWrapper(() => ctx.deleteMessage(ctx.message.message_id));
             return Promise.resolve(true);

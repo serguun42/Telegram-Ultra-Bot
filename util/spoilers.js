@@ -71,7 +71,7 @@ RestoreSpoilers(SPOILERS_STORAGE).catch(LogMessageOrError);
  * @param {string} [caption]
  * @returns {string}
  */
-export const StoreSpoiler = (type, source, caption = '') => {
+const StoreSpoiler = (type, source, caption = '') => {
   const id = createHash('md5').update(`${SPOILERS_STORAGE.length}_${Date.now()}`).digest('hex');
 
   SPOILERS_STORAGE.push({
@@ -97,8 +97,8 @@ export const MarkSpoiler = (ctx, target) => {
   if (BLACKLIST.includes(from.username) || BLACKLIST.includes(from.id)) return;
 
   /**
-   * @param {DefaultMessage} messageToMark
-   * @param {DefaultMessage[]} messagesToDelete
+   * @param {import('../types/telegraf').DefaultMessage} messageToMark
+   * @param {import('../types/telegraf').DefaultMessage[]} messagesToDelete
    * @returns {void}
    */
   const LocalMarkByMessage = (messageToMark, messagesToDelete) => {
