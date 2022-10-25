@@ -71,14 +71,14 @@ RestoreSpoilers(SPOILERS_STORAGE).catch(LogMessageOrError);
  * @param {string} [caption]
  * @returns {string}
  */
-const StoreSpoiler = (type, source, caption = '') => {
+const StoreSpoiler = (type, source, caption) => {
   const id = createHash('md5').update(`${SPOILERS_STORAGE.length}_${Date.now()}`).digest('hex');
 
   SPOILERS_STORAGE.push({
     id,
     type,
     source,
-    caption: typeof caption === 'string' ? caption : '',
+    caption: typeof caption === 'string' ? caption : undefined,
   });
 
   SaveSpoilers(SPOILERS_STORAGE);
@@ -102,27 +102,32 @@ export const MarkSpoiler = (ctx, target) => {
    * @returns {void}
    */
   const LocalMarkByMessage = (messageToMark, messagesToDelete) => {
-    /** @type {import("./types/spoilers").SpoilerTypeEnum} */
-    const spoilerType = messageToMark.photo
-      ? 'photo'
-      : messageToMark.animation
-      ? 'animation'
-      : messageToMark.video
-      ? 'video'
-      : 'nothing-to-hide';
+    /** @type {import("../types/spoilers").SpoilerTypeEnum} */
+    const spoilerType =
+      'photo' in messageToMark
+        ? 'photo'
+        : 'animation' in messageToMark
+        ? 'animation'
+        : 'video' in messageToMark
+        ? 'video'
+        : 'text' in messageToMark
+        ? 'text'
+        : 'nothing-to-hide';
 
     const spoilerSource =
-      spoilerType === 'photo'
+      spoilerType === 'photo' && 'photo' in messageToMark
         ? messageToMark.photo?.pop()?.file_id
-        : spoilerType === 'animation'
+        : spoilerType === 'animation' && 'animation' in messageToMark
         ? messageToMark.animation?.file_id
-        : spoilerType === 'video'
+        : spoilerType === 'video' && 'video' in messageToMark
         ? messageToMark.video?.file_id
+        : spoilerType === 'text' && 'text' in messageToMark
+        ? messageToMark.text
         : '';
 
     if (!spoilerSource) return;
 
-    const spoilerId = StoreSpoiler(spoilerType, spoilerSource, messageToMark.caption || '');
+    const spoilerId = StoreSpoiler(spoilerType, spoilerSource, messageToMark.caption);
 
     ctx
       .sendMessage(
@@ -133,6 +138,8 @@ export const MarkSpoiler = (ctx, target) => {
             ? 'гифкой'
             : spoilerType === 'video'
             ? 'видео'
+            : spoilerType === 'text'
+            ? 'текстом'
             : '💩'
         }`,
         {

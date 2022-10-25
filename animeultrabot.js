@@ -140,7 +140,7 @@ telegraf.on('text', (ctx) => {
 /**
  * @param {"animation" | "photo" | "video"} eventType
  */
-const GenericOnPhotoVideoGif = (eventType) => {
+const SpoilerWatchGenericEvent = (eventType) => {
   telegraf.on(eventType, (ctx) => {
     if (Date.now() - botStartedTime < 1000 * 15 && !IS_DEV) return;
 
@@ -159,9 +159,9 @@ const GenericOnPhotoVideoGif = (eventType) => {
   });
 };
 
-GenericOnPhotoVideoGif('animation');
-GenericOnPhotoVideoGif('photo');
-GenericOnPhotoVideoGif('video');
+SpoilerWatchGenericEvent('animation');
+SpoilerWatchGenericEvent('photo');
+SpoilerWatchGenericEvent('video');
 
 telegraf.on('new_chat_members', (ctx) => {
   const { message } = ctx;
@@ -232,6 +232,8 @@ telegraf.action(/^SPOILER(\w+)/, (ctx) => {
       ? telegram.sendAnimation(...argsToSend)
       : foundStoredSpoiler.type === 'video'
       ? telegram.sendVideo(...argsToSend)
+      : foundStoredSpoiler.type === 'text'
+      ? telegram.sendMessage(...argsToSend)
       : Promise.reject(new Error(`Unknown action with spoiler: ${JSON.stringify(foundStoredSpoiler)}`));
 
   action

@@ -19,7 +19,7 @@ const CheckForLink = (givenURL) => {
     url.hostname === 'mobile.nitter.net'
   )
     return true;
-  if (url.hostname === 'pbs.twimg.com') return true;
+  if (url.hostname === 'pbs.twimg.com' || url.hostname === 'video.twimg.com') return true;
   if (url.hostname === 'instagram.com' || url.hostname === 'www.instagram.com') return true;
   if (
     url.hostname === 'reddit.com' ||
