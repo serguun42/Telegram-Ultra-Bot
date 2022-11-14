@@ -48,6 +48,7 @@ const CheckForLink = (givenURL) => {
   if (url.hostname === 'kemono.party' || url.hostname === 'www.kemono.party' || url.hostname === 'beta.kemono.party')
     return true;
   if (url.hostname === 'dtf.ru') return true;
+  if (/^(m\.)?(joy|safe|anime\.|porn|fap)?reactor\.(cc|com)$/.test(url.hostname)) return true;
   return false;
 };
 

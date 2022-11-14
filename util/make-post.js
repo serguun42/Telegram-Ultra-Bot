@@ -130,16 +130,22 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
                   reply_to_message_id: sentMediaGroup.message_id,
                   allow_sending_without_reply: true,
                   disable_notification: true,
-                  reply_markup: Markup.inlineKeyboard([
-                    {
-                      text: 'Пост',
-                      url: encodeURI(socialPost.postURL),
-                    },
-                    {
-                      text: 'Автор',
-                      url: encodeURI(socialPost.authorURL),
-                    },
-                  ]).reply_markup,
+                  reply_markup: Markup.inlineKeyboard(
+                    [
+                      socialPost.postURL
+                        ? {
+                            text: 'Пост',
+                            url: encodeURI(socialPost.postURL),
+                          }
+                        : null,
+                      socialPost.authorURL
+                        ? {
+                            text: 'Автор',
+                            url: encodeURI(socialPost.authorURL),
+                          }
+                        : null,
+                    ].filter(Boolean)
+                  ).reply_markup,
                 })
               );
             }

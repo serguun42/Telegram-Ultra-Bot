@@ -7,6 +7,7 @@
 • Пост в <b>Pixiv</b> (изображения и <i>Ugoira</i>-гифки)
 • <b>Прямая ссылка</b> на файл изображения <b>в Pixiv</b> (<i>pximg<code>.</code>net</i>)
 • Пост на <b>Reddit</b> (изображения, гифки, видео и галереи с ними)
+• <b>Youtube</b> – в разработке
 • Пост на <b>Основе</b> (TJournal, DTF, vc<code>.</code>ru) – изображения, видео и гифки из постов
 • Пост в <b>Tumblr</b> (изображения)
 • Пост на <b>Danbooru</b> (изображения)
@@ -18,3 +19,4 @@
 • Пост на <b>Zerochan</b> (изображения)
 • Пост на <b>AnimePictures</b> (изображения)
 • Пост на <b>KemonoParty</b> (изображения)
+• Пост на <b>Joyreactor</b> (изображения, <i>(joy<code>/</code>safe<code>/</code>anime<code>/</code>etc…)reactor<code>.</code>сс</i> включая мобильные версии)
