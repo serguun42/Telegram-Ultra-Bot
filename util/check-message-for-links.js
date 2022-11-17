@@ -16,7 +16,8 @@ const CheckForLink = (givenURL) => {
     url.hostname === 'mobile.twitter.com' ||
     url.hostname === 'nitter.net' ||
     url.hostname === 'www.nitter.net' ||
-    url.hostname === 'mobile.nitter.net'
+    url.hostname === 'mobile.nitter.net' ||
+    url.hostname === 'vxtwitter.com'
   )
     return true;
   if (url.hostname === 'pbs.twimg.com' || url.hostname === 'video.twimg.com') return true;
@@ -48,7 +49,7 @@ const CheckForLink = (givenURL) => {
   if (url.hostname === 'kemono.party' || url.hostname === 'www.kemono.party' || url.hostname === 'beta.kemono.party')
     return true;
   if (url.hostname === 'dtf.ru') return true;
-  if (/^(m\.)?(joy|safe|anime\.|porn|fap)?reactor\.(cc|com)$/.test(url.hostname)) return true;
+  if (/^(m\.|img\d+\.)?(joy|safe|anime\.|porn|fap)?reactor\.(cc|com)$/.test(url.hostname)) return true;
   return false;
 };
 
