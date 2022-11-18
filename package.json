@@ -1,6 +1,6 @@
 {
   "name": "animeultrabot",
-  "version": "3.3.3",
+  "version": "3.3.4",
   "description": "Telegram bot based on Social-Picker-API. Includes features from Anime-Twitter-Picker Bot, Anime Spoiler Bot and Anime Welcomer Bot",
   "main": "animeultrabot.js",
   "type": "module",
@@ -14,15 +14,21 @@
     "url": "git+https://github.com/serguun42/Anime-Ultra-Bot.git"
   },
   "keywords": [
-    "instagram",
-    "reddit",
     "telegram",
-    "twitter-api",
-    "booru",
-    "danbooru",
+    "telegram-bot",
     "telegraf",
+    "twitter",
+    "instagram",
     "pixiv",
-    "gelbooru"
+    "ugoira",
+    "reddit",
+    "youtube-dl",
+    "yt-dlp",
+    "osnova",
+    "dtf",
+    "tumblr",
+    "joyreactor",
+    "coub"
   ],
   "author": "serguun42",
   "license": "BSL-1.0 License",

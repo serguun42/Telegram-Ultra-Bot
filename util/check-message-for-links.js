@@ -50,6 +50,7 @@ const CheckForLink = (givenURL) => {
     return true;
   if (url.hostname === 'dtf.ru') return true;
   if (/^(m\.|img\d+\.)?(joy|safe|anime\.|porn|fap)?reactor\.(cc|com)$/.test(url.hostname)) return true;
+  if (url.hostname === 'coub.com') return true;
   return false;
 };
 
