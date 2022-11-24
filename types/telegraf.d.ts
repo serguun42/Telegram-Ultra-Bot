@@ -11,10 +11,11 @@ export type TelegramContext = import('telegraf').NarrowedContext<
 
 export type TelegramFromObject = import('typegram').User;
 
-export type DefaultExtra =
-  | import('telegraf/typings/telegram-types').ExtraPhoto
-  | import('telegraf/typings/telegram-types').ExtraAnimation
-  | import('telegraf/typings/telegram-types').ExtraVideo;
+export type DefaultExtra = import('telegraf/typings/telegram-types').ExtraPhoto &
+  import('telegraf/typings/telegram-types').ExtraAnimation &
+  import('telegraf/typings/telegram-types').ExtraVideo;
+
+export type MediaGroupExtra = import('telegraf/typings/telegram-types').ExtraMediaGroup;
 
 export type MediaGroupItems =
   | (import('typegram').InputMediaPhoto | import('typegram').InputMediaVideo)[]

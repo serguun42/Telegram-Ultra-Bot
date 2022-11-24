@@ -2,7 +2,7 @@ import { createReadStream } from 'fs';
 import { Markup } from 'telegraf';
 import { PrepareCaption } from './common.js';
 import LogMessageOrError from './log.js';
-import { MarkSender } from './senders.js';
+import { MarkSentPost } from './marking-posts.js';
 import SendingWrapper from './sending-wrapper.js';
 import { SocialPick, VideoDone } from './social-picker.js';
 
@@ -65,6 +65,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
         };
 
         if (media.type === 'video') extra.supports_streaming = true;
+        if (ctx.message.reply_to_message) extra.reply_to_message_id = ctx.message.reply_to_message.message_id;
 
         SendingWrapper(() =>
           media.type === 'video'
@@ -77,9 +78,9 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
             /** @param {import('../types/telegraf').DefaultMessage} sentMessage */ (sentMessage) => {
               if (media.filename) VideoDone(media.filename);
 
-              MarkSender(sentMessage, from.id);
+              MarkSentPost(sentMessage, from.id);
 
-              if (deleteSource) return SendingWrapper(() => ctx.deleteMessage(ctx.message.message_id));
+              if (deleteSource) return ctx.deleteMessage(ctx.message.message_id);
               return Promise.resolve(true);
             }
           )
@@ -112,41 +113,50 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
           )}">Исходник файла</a>`,
         }));
 
-        SendingWrapper(() =>
-          ctx.sendMediaGroup(mediaGroupItems, {
-            reply_to_message_id: deleteSource ? null : ctx.message.message_id,
-            allow_sending_without_reply: true,
-            disable_notification: true,
-          })
-        )
+        /** @type {import('../types/telegraf').MediaGroupExtra} */
+        const extra = {
+          reply_to_message_id: deleteSource ? null : ctx.message.message_id,
+          allow_sending_without_reply: true,
+          disable_notification: true,
+        };
+
+        if (ctx.message.reply_to_message) extra.reply_to_message_id = ctx.message.reply_to_message.message_id;
+
+        SendingWrapper(() => ctx.sendMediaGroup(mediaGroupItems, extra))
           .then(
             /** @param {import('../types/telegraf').DefaultMessage[]} sentMediaGroup */ (sentMediaGroup) => {
-              sentMediaGroup.forEach((sentMessage) => MarkSender(sentMessage, from.id));
+              sentMediaGroup.forEach((sentMessage) => MarkSentPost(sentMessage, from.id));
 
               return SendingWrapper(() =>
-                ctx.sendMessage(caption, {
-                  disable_web_page_preview: true,
-                  parse_mode: 'HTML',
-                  reply_to_message_id: sentMediaGroup.message_id,
-                  allow_sending_without_reply: true,
-                  disable_notification: true,
-                  reply_markup: Markup.inlineKeyboard(
-                    [
-                      socialPost.postURL
-                        ? {
-                            text: 'Пост',
-                            url: encodeURI(socialPost.postURL),
-                          }
-                        : null,
-                      socialPost.authorURL
-                        ? {
-                            text: 'Автор',
-                            url: encodeURI(socialPost.authorURL),
-                          }
-                        : null,
-                    ].filter(Boolean)
-                  ).reply_markup,
-                })
+                ctx
+                  .sendMessage(caption, {
+                    disable_web_page_preview: true,
+                    parse_mode: 'HTML',
+                    reply_to_message_id: sentMediaGroup.message_id,
+                    allow_sending_without_reply: true,
+                    disable_notification: true,
+                    reply_markup: Markup.inlineKeyboard(
+                      [
+                        socialPost.postURL
+                          ? {
+                              text: 'Пост',
+                              url: encodeURI(socialPost.postURL),
+                            }
+                          : null,
+                        socialPost.authorURL
+                          ? {
+                              text: 'Автор',
+                              url: encodeURI(socialPost.authorURL),
+                            }
+                          : null,
+                      ].filter(Boolean)
+                    ).reply_markup,
+                  })
+                  .then((sentMessage) => {
+                    sentMessage.media_group_id = sentMediaGroup[0].media_group_id;
+
+                    return Promise.resolve(sentMessage);
+                  })
               );
             }
           )
@@ -155,9 +165,9 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
               if (media.filename) VideoDone(media.filename);
             });
 
-            MarkSender(sentMessage, from.id);
+            MarkSentPost(sentMessage, from.id);
 
-            if (deleteSource) return SendingWrapper(() => ctx.deleteMessage(ctx.message.message_id));
+            if (deleteSource) return ctx.deleteMessage(ctx.message.message_id);
             return Promise.resolve(true);
           })
           .catch(LogMessageOrError);

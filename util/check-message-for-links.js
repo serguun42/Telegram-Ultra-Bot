@@ -70,19 +70,17 @@ const CheckMessageForLinks = (ctx, message, ableToDeleteSource = false) => {
 
   if (!messageEntities?.length) return;
 
-  const containsOnlyOneLink =
+  const containsOneAndOnlyLink =
     messageEntities?.length === 1 &&
     messageEntities[0].type === 'url' &&
     messageEntities[0].offset === 0 &&
     messageEntities[0].length === messageText.length;
 
-  if (containsOnlyOneLink) {
-    const singleLink = messageText;
-
-    if (CheckForLink(singleLink))
+  if (containsOneAndOnlyLink) {
+    if (CheckForLink(messageText))
       MakePost({
         ctx,
-        givenURL: singleLink,
+        givenURL: messageText,
         deleteSource: ableToDeleteSource,
       });
 

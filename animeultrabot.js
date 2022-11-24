@@ -4,7 +4,7 @@ import { Telegraf } from 'telegraf';
 import IS_DEV from './util/is-dev.js';
 import LogMessageOrError from './util/log.js';
 import { GetUsername } from './util/common.js';
-import { GetSpoiler, MarkSpoiler } from './util/spoilers.js';
+import { GetSpoiler, MarkSpoiler, MarkSentPost } from './util/marking-posts.js';
 import { LoadTelegramConfig } from './util/load-configs.js';
 import CheckCommandAvailability from './util/check-command-availability.js';
 import CheckMessageForLinks from './util/check-message-for-links.js';
@@ -150,6 +150,7 @@ const SpoilerWatchGenericEvent = (eventType) => {
       if (!chatFromList.enabled) return;
       if (chatFromList.id !== chat.id) return;
 
+      MarkSentPost(message, ctx.from.id);
       if (!(message.caption && message[eventType])) return;
 
       if (new RegExp(`^/spoiler(@${BOT_USERNAME})?\\b`, 'i').test(message.caption)) return MarkSpoiler(ctx, 'self');
@@ -219,21 +220,35 @@ telegraf.action(/^SPOILER(\w+)/, (ctx) => {
 
   const foundStoredSpoiler = GetSpoiler(ctx?.match?.[1]);
   if (!foundStoredSpoiler) {
-    ctx.answerCbQuery('Картинка настолько ужасная, что я её потерял 😬. Вот растяпа!', true).catch(LogMessageOrError);
+    ctx.answerCbQuery('Спойлер настолько ужасен, что я его потерял 😬. Вот растяпа!', true).catch(LogMessageOrError);
     return;
   }
 
-  const argsToSend = [from.id, foundStoredSpoiler.source, { caption: foundStoredSpoiler?.caption || null }];
-
   const action =
     foundStoredSpoiler.type === 'photo'
-      ? telegram.sendPhoto(...argsToSend)
+      ? telegram.sendPhoto(from.id, foundStoredSpoiler.source, { caption: foundStoredSpoiler.caption })
       : foundStoredSpoiler.type === 'animation'
-      ? telegram.sendAnimation(...argsToSend)
+      ? telegram.sendAnimation(from.id, foundStoredSpoiler.source, { caption: foundStoredSpoiler.caption })
       : foundStoredSpoiler.type === 'video'
-      ? telegram.sendVideo(...argsToSend)
+      ? telegram.sendVideo(from.id, foundStoredSpoiler.source, { caption: foundStoredSpoiler.caption })
       : foundStoredSpoiler.type === 'text'
-      ? telegram.sendMessage(...argsToSend)
+      ? telegram.sendMessage(from.id, foundStoredSpoiler.source)
+      : foundStoredSpoiler.type === 'group'
+      ? telegram
+          .sendMediaGroup(
+            from.id,
+            foundStoredSpoiler.items
+              .filter((item) => ['photo', 'video'].includes(item.type))
+              .map((item) => ({
+                type: item.type,
+                media: item.source,
+                caption: item.caption,
+              }))
+          )
+          .then(() => {
+            const textMessageFromMediaGroup = foundStoredSpoiler.items.find((item) => item.type === 'text');
+            if (textMessageFromMediaGroup) telegram.sendMessage(from.id, textMessageFromMediaGroup.source);
+          })
       : Promise.reject(new Error(`Unknown action with spoiler: ${JSON.stringify(foundStoredSpoiler)}`));
 
   action

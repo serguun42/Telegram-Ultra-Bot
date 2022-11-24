@@ -1,11 +1,5 @@
 import LogMessageOrError from '../util/log.js';
-import {
-  ForgetByMediaGroupId,
-  ForgetByMessageById,
-  GetSentPostByMessageId,
-  GetSentPostsByMediaGroupId,
-} from '../util/senders.js';
-import SendingWrapper from '../util/sending-wrapper.js';
+import { ForgetSentPost, GetSentPostByMessageId, GetSentPostsByMediaGroupId } from '../util/marking-posts.js';
 
 /**
  * @param {import('../types/telegraf').TelegramContext} ctx
@@ -28,7 +22,7 @@ const DeleteCommand = (ctx) => {
         GetSentPostsByMediaGroupId(sentPost.mediaGroupId).map((foundPost) => ctx.deleteMessage(foundPost.messageId))
       )
         .then(() => {
-          ForgetByMediaGroupId(sentPost.mediaGroupId);
+          ForgetSentPost({ mediaGroupId: sentPost.mediaGroupId });
           ctx.deleteMessage(requestingMessageId);
         })
         .catch(LogMessageOrError);
@@ -36,12 +30,12 @@ const DeleteCommand = (ctx) => {
       ctx
         .deleteMessage(sentPost.messageId)
         .then(() => {
-          ForgetByMessageById(sentPost.messageId);
+          ForgetSentPost({ messageId: sentPost.messageId });
           ctx.deleteMessage(requestingMessageId);
         })
         .catch(LogMessageOrError);
     }
-  } else SendingWrapper(() => ctx.deleteMessage(requestingMessageId)).catch(LogMessageOrError);
+  } else ctx.deleteMessage(requestingMessageId).catch(LogMessageOrError);
 };
 
 export default DeleteCommand;
