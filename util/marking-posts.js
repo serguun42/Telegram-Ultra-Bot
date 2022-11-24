@@ -157,22 +157,25 @@ export const MarkSpoiler = (ctx, target) => {
    * @returns {void}
    */
   const LocalMarkByMessage = (messageToMark, messagesIdsToDelete) => {
-    const spoilerFromSentPosts = messageToMark.media_group_id
-      ? CreateSpoilerFromMediaGroup(messageToMark.media_group_id)
-      : GetSentPostByMessageId(messageToMark.message_id)?.readySpoiler;
+    const messageId = messageToMark.message_id;
+    const mediaGroupId = GetSentPostByMessageId(messageId)?.mediaGroupId;
+
+    const spoilerFromSentPosts = mediaGroupId
+      ? CreateSpoilerFromMediaGroup(mediaGroupId)
+      : GetSentPostByMessageId(messageId)?.readySpoiler;
 
     const spoiler = spoilerFromSentPosts || CreateSpoilerFromMessage(messageToMark);
     if (!spoiler) return;
 
     StoreSpoiler(spoiler);
 
-    if (messageToMark.media_group_id)
-      GetSentPostsByMediaGroupId(messageToMark.media_group_id).forEach((sendPost) => {
+    if (mediaGroupId)
+      GetSentPostsByMediaGroupId(mediaGroupId).forEach((sendPost) => {
         if (!messagesIdsToDelete.includes(sendPost.messageId)) messagesIdsToDelete.push(sendPost.messageId);
       });
 
-    if (messageToMark.media_group_id) ForgetSentPost({ mediaGroupId: messageToMark.media_group_id });
-    else ForgetSentPost({ messageId: messageToMark.message_id });
+    if (mediaGroupId) ForgetSentPost({ mediaGroupId });
+    else ForgetSentPost({ messageId });
 
     ctx
       .sendMessage(
@@ -208,7 +211,9 @@ export const MarkSpoiler = (ctx, target) => {
         }
       )
       .then(() =>
-        Promise.all(messagesIdsToDelete.map((messageId) => ctx.deleteMessage(messageId).catch(LogMessageOrError)))
+        Promise.all(
+          messagesIdsToDelete.map((deletingMessageId) => ctx.deleteMessage(deletingMessageId).catch(LogMessageOrError))
+        )
       )
       .catch(LogMessageOrError);
   };
