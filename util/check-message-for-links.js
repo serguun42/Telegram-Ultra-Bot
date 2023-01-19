@@ -63,10 +63,10 @@ const CheckForLink = (givenURL) => {
  * @returns {void}
  */
 const CheckMessageForLinks = (ctx, message, ableToDeleteSource = false) => {
-  /** @type {string} */
-  const messageText = message.text || message.caption || '';
-  /** @type {import("telegraf/typings/core/types/typegram").MessageEntity[]} */
-  const messageEntities = message.entities || message.caption_entities || [];
+  const textMessage = 'text' in message;
+  const mediaMessage = 'caption' in message;
+  const messageText = (textMessage ? message.text : mediaMessage ? message.caption : '').trim();
+  const messageEntities = textMessage ? message.entities : mediaMessage ? message.caption_entities : [];
 
   if (!messageEntities?.length) return;
 

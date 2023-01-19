@@ -4,7 +4,8 @@ import { inspect } from 'util';
 import IS_DEV from './is-dev.js';
 
 const SHORT_DELIMITER = Array.from({ length: 30 }, () => '~').join('');
-const LONG_DELIMITER = Array.from({ length: 30 }, () => '🔼').join('');
+const START_DELIMITER = Array.from({ length: 30 }, () => '🔽').join('');
+const END_DELIMITER = Array.from({ length: 30 }, () => '🔼').join('');
 
 /**
  * @param {...any} args
@@ -24,9 +25,10 @@ const LogMessageOrError = (...args) => {
   const out = containsError ? console.error : console.log;
   const wrapped = WrapForOutput(...args);
 
+  out(START_DELIMITER);
   out(new Date());
   out(wrapped);
-  out(LONG_DELIMITER);
+  out(END_DELIMITER);
 
   if (IS_DEV) writeFile('./out/logmessageorerror.json', JSON.stringify(args, false, '\t')).catch(console.warn);
 };

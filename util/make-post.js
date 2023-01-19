@@ -74,22 +74,33 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
             ? ctx.sendAnimation(inputFile, extra)
             : ctx.sendPhoto(inputFile, extra)
         )
-          .then(
-            /** @param {import('../types/telegraf').DefaultMessage} sentMessage */ (sentMessage) => {
-              if (media.filename) VideoDone(media.filename);
+          .then((sentMessage) => {
+            if (media.filename) VideoDone(media.filename);
 
-              MarkSentPost(sentMessage, from.id, true);
+            MarkSentPost(sentMessage, from.id, true);
 
-              if (deleteSource) {
-                ForgetSentPost({ messageId: ctx.message.message_id });
-                return ctx.deleteMessage(ctx.message.message_id);
-              }
-              return Promise.resolve(true);
+            if (deleteSource) {
+              ForgetSentPost({ messageId: ctx.message.message_id });
+              return ctx.deleteMessage(ctx.message.message_id);
             }
-          )
-          .catch(LogMessageOrError);
+            return Promise.resolve(true);
+          })
+          .catch((e) => LogMessageOrError(`Making post ${givenURL}`, e));
       } else {
-        caption += `\nФайлы: ${socialPost.medias
+        const readyMedia = socialPost.medias
+          .filter(
+            (media) => ['photo', 'video'].includes(media.type) || (media.type === 'gif' && media.filetype === 'mp4')
+          )
+          .map((media) => {
+            if (media.type === 'gif' && media.filetype === 'mp4') media.type = 'video';
+            return media;
+          });
+        if (!readyMedia.length) {
+          LogMessageOrError(new Error(`Making post ${givenURL}. Empty <readyMedia> for media group`));
+          return;
+        }
+
+        caption += `\nФайлы: ${readyMedia
           .slice(0, 10)
           .map(
             (media, index) =>
@@ -97,13 +108,13 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
           )
           .join(', ')}`;
 
-        if (socialPost.medias.length > 10)
+        if (readyMedia.length > 10)
           caption += `\nВсе иллюстраций не вместились, <a href="${encodeURI(
             socialPost.postURL
           )}">оригинальный пост</a>`;
 
         /** @type {import("../types/telegraf").MediaGroupItems} */
-        const mediaGroupItems = socialPost.medias.slice(0, 10).map((media) => ({
+        const mediaGroupItems = readyMedia.slice(0, 10).map((media) => ({
           media: media.filename
             ? { source: createReadStream(media.filename) }
             : { url: encodeURI(media.externalUrl || media.original) },
@@ -126,43 +137,39 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
         if (ctx.message.reply_to_message) extra.reply_to_message_id = ctx.message.reply_to_message.message_id;
 
         SendingWrapper(() => ctx.sendMediaGroup(mediaGroupItems, extra))
-          .then(
-            /** @param {import('../types/telegraf').DefaultMessage[]} sentMediaGroup */ (sentMediaGroup) => {
-              sentMediaGroup.forEach((sentMessage) => MarkSentPost(sentMessage, from.id, true));
+          .then((sentMediaGroup) => {
+            sentMediaGroup.forEach((sentMessage) => MarkSentPost(sentMessage, from.id, true));
 
-              return SendingWrapper(() =>
-                ctx
-                  .sendMessage(caption, {
-                    disable_web_page_preview: true,
-                    parse_mode: 'HTML',
-                    reply_to_message_id: sentMediaGroup.message_id,
-                    allow_sending_without_reply: true,
-                    disable_notification: true,
-                    reply_markup: Markup.inlineKeyboard(
-                      [
-                        socialPost.postURL
-                          ? {
-                              text: 'Пост',
-                              url: encodeURI(socialPost.postURL),
-                            }
-                          : null,
-                        socialPost.authorURL
-                          ? {
-                              text: 'Автор',
-                              url: encodeURI(socialPost.authorURL),
-                            }
-                          : null,
-                      ].filter(Boolean)
-                    ).reply_markup,
-                  })
-                  .then((sentMessage) => {
-                    sentMessage.media_group_id = sentMediaGroup[0].media_group_id;
+            return SendingWrapper(() =>
+              ctx
+                .sendMessage(caption, {
+                  disable_web_page_preview: true,
+                  parse_mode: 'HTML',
+                  disable_notification: true,
+                  reply_markup: Markup.inlineKeyboard(
+                    [
+                      socialPost.postURL
+                        ? {
+                            text: 'Пост',
+                            url: encodeURI(socialPost.postURL),
+                          }
+                        : null,
+                      socialPost.authorURL
+                        ? {
+                            text: 'Автор',
+                            url: encodeURI(socialPost.authorURL),
+                          }
+                        : null,
+                    ].filter(Boolean)
+                  ).reply_markup,
+                })
+                .then((sentMessage) => {
+                  sentMessage.media_group_id = sentMediaGroup[0].media_group_id;
 
-                    return Promise.resolve(sentMessage);
-                  })
-              );
-            }
-          )
+                  return Promise.resolve(sentMessage);
+                })
+            );
+          })
           .then((sentMessage) => {
             socialPost.medias.forEach((media) => {
               if (media.filename) VideoDone(media.filename);
@@ -176,7 +183,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
             }
             return Promise.resolve(true);
           })
-          .catch(LogMessageOrError);
+          .catch((e) => LogMessageOrError(`Making post ${givenURL}`, e));
       }
     })
     .catch((e) => LogMessageOrError(`Making post ${givenURL}`, e));
