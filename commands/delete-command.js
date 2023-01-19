@@ -2,7 +2,7 @@ import LogMessageOrError from '../util/log.js';
 import { ForgetSentPost, GetSentPostByMessageId, GetSentPostsByMediaGroupId } from '../util/marking-posts.js';
 
 /**
- * @param {import('../types/telegraf').TelegramContext} ctx
+ * @param {import('../types/telegraf').DefaultContext} ctx
  */
 const DeleteCommand = (ctx) => {
   const { message, from } = ctx;
@@ -23,6 +23,7 @@ const DeleteCommand = (ctx) => {
       )
         .then(() => {
           ForgetSentPost({ mediaGroupId: sentPost.mediaGroupId });
+          ForgetSentPost({ messageId: requestingMessageId });
           ctx.deleteMessage(requestingMessageId);
         })
         .catch(LogMessageOrError);
@@ -31,11 +32,15 @@ const DeleteCommand = (ctx) => {
         .deleteMessage(sentPost.messageId)
         .then(() => {
           ForgetSentPost({ messageId: sentPost.messageId });
+          ForgetSentPost({ messageId: requestingMessageId });
           ctx.deleteMessage(requestingMessageId);
         })
         .catch(LogMessageOrError);
     }
-  } else ctx.deleteMessage(requestingMessageId).catch(LogMessageOrError);
+  } else {
+    ForgetSentPost({ messageId: requestingMessageId });
+    ctx.deleteMessage(requestingMessageId).catch(LogMessageOrError);
+  }
 };
 
 export default DeleteCommand;

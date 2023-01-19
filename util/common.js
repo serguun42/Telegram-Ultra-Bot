@@ -66,7 +66,7 @@ export const PrepareCaption = (rawCaption) => {
 };
 
 /**
- * @param {import('../types/telegraf').TelegramFromObject} from
+ * @param {import('../types/telegraf').DefaultFrom} from
  * @returns {string}
  */
 export const GetUsername = (from) => {

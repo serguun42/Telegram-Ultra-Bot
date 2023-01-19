@@ -6,10 +6,15 @@ const { PRIVILEGE_LIST, BLACKLIST } = LoadTelegramConfig();
 const commandsUsage = {};
 
 /**
- * @param {import('../types/telegraf').TelegramFromObject} from
+ * True if can execute command, false if blocked
+ *
+ * @param {import('../types/telegraf').DefaultFrom} from
+ * @param {import('../types/commands').CommandName} [commandName]
  * @returns {boolean}
  */
-const CheckCommandAvailability = (from) => {
+const CheckCommandAvailability = (from, commandName) => {
+  if (commandName === 'spoiler') return true;
+
   if (PRIVILEGE_LIST.includes(from.username)) return true;
   if (BLACKLIST.includes(from.username) || BLACKLIST.includes(from.id)) return false;
 

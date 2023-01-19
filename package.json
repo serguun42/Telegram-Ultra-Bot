@@ -1,6 +1,6 @@
 {
   "name": "animeultrabot",
-  "version": "3.4.2",
+  "version": "3.5.0",
   "description": "Telegram bot based on Social-Picker-API. Includes features from Anime-Twitter-Picker Bot, Anime Spoiler Bot and Anime Welcomer Bot",
   "main": "animeultrabot.js",
   "type": "module",

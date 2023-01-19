@@ -49,4 +49,8 @@ export type TelegramConfig = {
   };
 };
 
-export type GenericConfig = SocialPickerConfig | TelegramConfig;
+export type GenericConfig<T extends ConfigName> = T extends 'social-picker'
+  ? SocialPickerConfig
+  : T extends 'telegram'
+  ? TelegramConfig
+  : never;

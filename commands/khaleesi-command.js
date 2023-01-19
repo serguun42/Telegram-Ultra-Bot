@@ -2,7 +2,7 @@ import Khaleesi from 'khaleesi-js';
 import LogMessageOrError from '../util/log.js';
 
 /**
- * @param {import('../types/telegraf').TelegramContext} ctx
+ * @param {import('../types/telegraf').DefaultContext} ctx
  */
 const KhaleesiCommand = (ctx) => {
   const { message } = ctx;

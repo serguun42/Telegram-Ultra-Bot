@@ -4,7 +4,7 @@ import LogMessageOrError from '../util/log.js';
 const { SPECIAL_STICKERS_SET } = LoadTelegramConfig();
 
 /**
- * @param {import('../types/telegraf').TelegramContext} ctx
+ * @param {import('../types/telegraf').DefaultContext} ctx
  * @param {import('telegraf').Telegram} telegram
  */
 const ChebotarbCommand = (ctx, telegram) => {

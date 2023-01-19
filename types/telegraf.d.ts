@@ -1,23 +1,23 @@
+import { Context, NarrowedContext, Telegraf } from 'telegraf';
+import { Message, Update, InputMediaPhoto, InputMediaVideo, InputMediaAudio, InputMediaDocument, User } from 'typegram';
+import { ExtraAnimation, ExtraMediaGroup, ExtraPhoto, ExtraVideo } from 'telegraf/typings/telegram-types';
+
 export type DefaultMessage =
-  | import('typegram').Message.PhotoMessage
-  | import('typegram').Message.VideoMessage
-  | import('typegram').Message.AnimationMessage
-  | import('typegram').Message.TextMessage;
+  | Message.TextMessage
+  | Message.PhotoMessage
+  | Message.VideoMessage
+  | Message.AnimationMessage;
 
-export type TelegramContext = import('telegraf').NarrowedContext<
-  import('telegraf').Context,
-  { message: DefaultMessage; reply_to_message?: DefaultMessage }
->;
+export type TelegrafInstance = Telegraf<Context<Update>>;
 
-export type TelegramFromObject = import('typegram').User;
+export type DefaultContext = NarrowedContext<Context<Update>, Update.MessageUpdate<Message>>;
 
-export type DefaultExtra = import('telegraf/typings/telegram-types').ExtraPhoto &
-  import('telegraf/typings/telegram-types').ExtraAnimation &
-  import('telegraf/typings/telegram-types').ExtraVideo;
+export type NewMemberContext = NarrowedContext<Context<Update>, Update.MessageUpdate<Message.NewChatMembersMessage>>;
 
-export type MediaGroupExtra = import('telegraf/typings/telegram-types').ExtraMediaGroup;
+export type DefaultFrom = User;
 
-export type MediaGroupItems =
-  | (import('typegram').InputMediaPhoto | import('typegram').InputMediaVideo)[]
-  | import('typegram').InputMediaAudio[]
-  | import('typegram').InputMediaDocument[];
+export type DefaultExtra = ExtraPhoto & ExtraAnimation & ExtraVideo;
+
+export type MediaGroupExtra = ExtraMediaGroup;
+
+export type MediaGroupItems = (InputMediaPhoto | InputMediaVideo)[] | InputMediaAudio[] | InputMediaDocument[];

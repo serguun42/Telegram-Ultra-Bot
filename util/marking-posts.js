@@ -1,8 +1,7 @@
 /* eslint-disable no-use-before-define */
 import { stat, rm, mkdir, writeFile, readFile } from 'fs/promises';
 import { join, resolve } from 'path';
-import { createHash } from 'crypto';
-import { Markup } from 'telegraf';
+import { PrepareCaption } from './common.js';
 import { LoadTelegramConfig } from './load-configs.js';
 import LogMessageOrError from './log.js';
 import IS_DEV from './is-dev.js';
@@ -12,226 +11,139 @@ const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-const { BOT_USERNAME, BLACKLIST } = LoadTelegramConfig();
+const { BLACKLIST } = LoadTelegramConfig();
 
 const DB_DIRECTORY = resolve('database');
-const SPOILERS_DB_PATH = join(DB_DIRECTORY, 'spoilers.json');
 const SENT_POSTS_DB_PATH = join(DB_DIRECTORY, 'sent-posts.json');
 
-/** @type {import("../types/spoilers").SpoilersStorage} */
-const SPOILERS_STORAGE = [];
 /** @type {import("../types/sent-posts").SentPostsStorage} */
 let SENT_POSTS_STORAGE = [];
-
+let storageIsReady = false;
 /** @returns {Promise<void>} */
-const PrepareStorage = () =>
-  stat(DB_DIRECTORY)
+const PrepareStorage = () => {
+  if (storageIsReady) return Promise.resolve();
+
+  return stat(DB_DIRECTORY)
     .then((directoryStats) => {
       if (!directoryStats.isDirectory()) return Promise.reject(new Error(`No directory for storages: ${DB_DIRECTORY}`));
 
-      return Promise.all([
-        stat(SPOILERS_DB_PATH).then((spoilersStorageStats) => {
-          if (spoilersStorageStats.isFile()) return Promise.resolve();
-          return rm(SENT_POSTS_DB_PATH, { recursive: true });
-        }),
-        stat(SENT_POSTS_DB_PATH).then((sentPostsStorageStats) => {
-          if (sentPostsStorageStats.isFile()) return Promise.resolve();
-          return rm(SENT_POSTS_DB_PATH, { recursive: true });
-        }),
-      ]).catch(() => Promise.resolve());
+      return stat(SENT_POSTS_DB_PATH).then((sentPostsStorageStats) => {
+        if (sentPostsStorageStats.isFile()) {
+          storageIsReady = true;
+          return Promise.resolve();
+        }
+
+        return rm(SENT_POSTS_DB_PATH, { recursive: true });
+      });
     })
     .catch(() => rm(DB_DIRECTORY, { recursive: true }).then(() => mkdir(DB_DIRECTORY)));
-
-/**
- * @param {import("../types/spoilers").SpoilersStorage} spoilerStorage
- * @returns {Promise<void>}
- */
-const SaveSpoilers = (spoilerStorage) =>
-  PrepareStorage()
-    .then(() =>
-      writeFile(SPOILERS_DB_PATH, IS_DEV ? JSON.stringify(spoilerStorage, false, 2) : JSON.stringify(spoilerStorage))
-    )
-    .catch(LogMessageOrError);
-
-/**
- * @param {import("../types/spoilers").SpoilersStorage} [spoilerStorageTarget]
- * @returns {Promise<import("../types/spoilers").SpoilersStorage>}
- */
-const RestoreSpoilers = (spoilerStorageTarget) =>
-  PrepareStorage()
-    .then(() => readFile(SPOILERS_DB_PATH))
-    .then((restoredBuffer) => {
-      /** @type {import("../types/spoilers").SpoilersStorage} */
-      const restoredStorage = JSON.parse(restoredBuffer.toString());
-      if (!Array.isArray(restoredStorage)) return Promise.reject(new Error('Restored spoilers is not an array'));
-
-      if (spoilerStorageTarget) restoredStorage.forEach((entry) => spoilerStorageTarget.push(entry));
-
-      return Promise.resolve(restoredStorage);
-    })
-    .catch((e) => {
-      LogMessageOrError('Cannot restore from spoiler dump file', e);
-      return Promise.resolve([]);
-    });
-
-RestoreSpoilers(SPOILERS_STORAGE).catch(LogMessageOrError);
-
-/**
- * @param {import('../types/telegraf').DefaultMessage} messageForSpoiler
- * @returns {import('../types/spoilers').Spoiler | null}
- */
-export const CreateSpoilerFromMessage = (messageForSpoiler) => {
-  /** @type {import("../types/spoilers").SpoilerTypeEnum} */
-  const spoilerType =
-    'photo' in messageForSpoiler
-      ? 'photo'
-      : 'animation' in messageForSpoiler
-      ? 'animation'
-      : 'video' in messageForSpoiler
-      ? 'video'
-      : 'text' in messageForSpoiler
-      ? 'text'
-      : '';
-
-  const spoilerSource =
-    'photo' in messageForSpoiler
-      ? messageForSpoiler.photo?.pop()?.file_id
-      : 'animation' in messageForSpoiler
-      ? messageForSpoiler.animation?.file_id
-      : 'video' in messageForSpoiler
-      ? messageForSpoiler.video?.file_id
-      : 'text' in messageForSpoiler
-      ? messageForSpoiler.text
-      : '';
-
-  if (!spoilerSource) return null;
-
-  /** @type {import('../types/spoilers').Spoiler} */
-  const spoiler = {
-    id: createHash('md5').update(`${SPOILERS_STORAGE.length}_${Date.now()}`).digest('hex'),
-    type: spoilerType,
-    source: spoilerSource,
-    caption: messageForSpoiler.caption,
-  };
-
-  return spoiler;
 };
 
 /**
- * @param {string} mediaGroupId
- * @returns {import('../types/spoilers').Spoiler | null}
- */
-const CreateSpoilerFromMediaGroup = (mediaGroupId) => {
-  const foundSentPosts = GetSentPostsByMediaGroupId(mediaGroupId);
-  if (!foundSentPosts?.length) return null;
-
-  return {
-    id: createHash('md5').update(`${SPOILERS_STORAGE.length}_${Date.now()}`).digest('hex'),
-    type: 'group',
-    items: foundSentPosts.map((sentPost) => sentPost.readySpoiler),
-  };
-};
-
-/**
- * @param {import('../types/spoilers').Spoiler} spoiler
+ * @param {import('../types/telegraf').DefaultContext} ctx
  * @returns {void}
  */
-const StoreSpoiler = (spoiler) => {
-  SPOILERS_STORAGE.push(spoiler);
-  SaveSpoilers(SPOILERS_STORAGE);
-};
-
-/**
- * @param {import('../types/telegraf').TelegramContext} ctx
- * @param {"reply" | "self"} target
- * @returns {void}
- */
-export const MarkSpoiler = (ctx, target) => {
-  const { message, from } = ctx;
+export const MarkSpoiler = (ctx) => {
+  const { message: requestMessage, from } = ctx;
 
   if (BLACKLIST.includes(from.username) || BLACKLIST.includes(from.id)) return;
 
+  const messageToMark = 'reply_to_message' in requestMessage ? requestMessage.reply_to_message : null;
+  if (!messageToMark) return;
+  const messagesIdsToDelete = [requestMessage.message_id];
+
+  const sentPost = GetSentPostByMessageId(messageToMark.message_id);
+  if (!sentPost) return;
+
+  const mediaGroupId = sentPost?.mediaGroupId;
+  const mediaGroupSentPosts = mediaGroupId ? GetSentPostsByMediaGroupId(mediaGroupId) : [];
+
+  if (mediaGroupId)
+    mediaGroupSentPosts.forEach((mediaGroupSentPost) => {
+      if (!messagesIdsToDelete.includes(mediaGroupSentPost.messageId))
+        messagesIdsToDelete.push(mediaGroupSentPost.messageId);
+    });
+  else messagesIdsToDelete.push(messageToMark.message_id);
+
   /**
-   * @param {import('../types/telegraf').DefaultMessage} messageToMark
-   * @param {number[]} messagesIdsToDelete
-   * @returns {void}
+   * `sentPost.canEdit` is saved for later versions of Telegraf/API
+   * when bots will have same editing privileges as users
    */
-  const LocalMarkByMessage = (messageToMark, messagesIdsToDelete) => {
-    const messageId = messageToMark.message_id;
-    const mediaGroupId = GetSentPostByMessageId(messageId)?.mediaGroupId;
 
-    const spoilerFromSentPosts = mediaGroupId
-      ? CreateSpoilerFromMediaGroup(mediaGroupId)
-      : GetSentPostByMessageId(messageId)?.readySpoiler;
-
-    const spoiler = spoilerFromSentPosts || CreateSpoilerFromMessage(messageToMark);
-    if (!spoiler) return;
-
-    StoreSpoiler(spoiler);
-
-    if (mediaGroupId)
-      GetSentPostsByMediaGroupId(mediaGroupId).forEach((sendPost) => {
-        if (!messagesIdsToDelete.includes(sendPost.messageId)) messagesIdsToDelete.push(sendPost.messageId);
-      });
-
-    if (mediaGroupId) ForgetSentPost({ mediaGroupId });
-    else ForgetSentPost({ messageId });
-
-    ctx
-      .sendMessage(
-        `Спойлер с ${
-          spoiler.type === 'photo'
-            ? 'картинкой'
-            : spoiler.type === 'animation'
-            ? 'гифкой'
-            : spoiler.type === 'video'
-            ? 'видео'
-            : spoiler.type === 'text'
-            ? 'текстом'
-            : spoiler.type === 'group'
-            ? 'галереей'
-            : '💩'
-        }`,
-        {
-          disable_web_page_preview: true,
-          parse_mode: 'HTML',
-          reply_to_message_id: messageToMark.reply_to_message,
-          allow_sending_without_reply: true,
-          disable_notification: true,
-          reply_markup: Markup.inlineKeyboard([
-            {
-              text: '🖼 Показать 🖼',
-              callback_data: `SPOILER${spoiler.id}`,
-            },
-            {
-              text: 'Диалог с ботом',
-              url: `https://t.me/${BOT_USERNAME}`,
-            },
-          ]).reply_markup,
-        }
-      )
-      .then(() =>
-        Promise.all(
-          messagesIdsToDelete.map((deletingMessageId) => ctx.deleteMessage(deletingMessageId).catch(LogMessageOrError))
+  const resendPromise = mediaGroupId
+    ? ctx
+        .replyWithMediaGroup(
+          mediaGroupSentPosts
+            .filter((item) => ['photo', 'video'].includes(item.type))
+            .map((item) => ({
+              type: item.type,
+              media: item.source,
+              parse_mode: 'HTML',
+              caption: `<tg-spoiler>${PrepareCaption(item.caption)}</tg-spoiler>`,
+              has_spoiler: true,
+            }))
         )
+        .then(() => {
+          const textMessageFromMediaGroup = mediaGroupSentPosts.find((item) => item.type === 'text');
+          if (textMessageFromMediaGroup?.source)
+            ctx.reply(`<tg-spoiler>${PrepareCaption(textMessageFromMediaGroup.source)}</tg-spoiler>`, {
+              parse_mode: 'HTML',
+              reply_markup: textMessageFromMediaGroup.keyboard,
+            });
+        })
+    : sentPost.type === 'photo'
+    ? ctx.replyWithPhoto(sentPost.source, {
+        disable_web_page_preview: true,
+        parse_mode: 'HTML',
+        caption: `<tg-spoiler>${PrepareCaption(sentPost.caption)}</tg-spoiler>`,
+        has_spoiler: true,
+        allow_sending_without_reply: true,
+        disable_notification: true,
+        reply_markup: sentPost.keyboard,
+      })
+    : sentPost.type === 'video'
+    ? ctx.replyWithVideo(sentPost.source, {
+        disable_web_page_preview: true,
+        parse_mode: 'HTML',
+        caption: `<tg-spoiler>${PrepareCaption(sentPost.caption)}</tg-spoiler>`,
+        has_spoiler: true,
+        allow_sending_without_reply: true,
+        disable_notification: true,
+        reply_markup: sentPost.keyboard,
+      })
+    : sentPost.type === 'animation'
+    ? ctx.replyWithAnimation(sentPost.source, {
+        disable_web_page_preview: true,
+        parse_mode: 'HTML',
+        caption: `<tg-spoiler>${PrepareCaption(sentPost.caption)}</tg-spoiler>`,
+        has_spoiler: true,
+        allow_sending_without_reply: true,
+        disable_notification: true,
+        reply_markup: sentPost.keyboard,
+      })
+    : sentPost.type === 'text'
+    ? ctx.reply(`<tg-spoiler>${PrepareCaption(sentPost.source)}</tg-spoiler>`, {
+        disable_web_page_preview: true,
+        parse_mode: 'HTML',
+        allow_sending_without_reply: true,
+        disable_notification: true,
+        reply_markup: sentPost.keyboard,
+      })
+    : Promise.reject(
+        new Error(`Unknown action when marking as spoiler following <sentPost>: ${JSON.stringify(sentPost)}`)
+      );
+
+  resendPromise
+    .then(() =>
+      Promise.all(
+        messagesIdsToDelete.map((deletingMessageId) => {
+          ForgetSentPost({ messageId: deletingMessageId });
+          return ctx.deleteMessage(deletingMessageId).catch(LogMessageOrError);
+        })
       )
-      .catch(LogMessageOrError);
-  };
-
-  if (target === 'reply') {
-    const replyingMessage = message.reply_to_message;
-    if (!replyingMessage) return;
-    LocalMarkByMessage(replyingMessage, [replyingMessage?.message_id, message?.message_id]);
-  } else if (target === 'self') {
-    LocalMarkByMessage(message, [message?.message_id]);
-  }
+    )
+    .catch(LogMessageOrError);
 };
-
-/**
- * @param {string} seekingId
- * @returns {import('../types/spoilers').Spoiler}
- */
-export const GetSpoiler = (seekingId) => SPOILERS_STORAGE.find((spoiler) => spoiler.id === seekingId);
 
 /**
  * @param {import("../types/sent-posts").SentPostsStorage} sentPostsStorage
@@ -265,6 +177,7 @@ const RestoreSentPosts = (sentPostsStorageTarget) =>
     })
     .catch((e) => {
       LogMessageOrError('Cannot restore from sent-posts dump file', e);
+      SaveSentPosts([]);
       return Promise.resolve([]);
     });
 
@@ -273,18 +186,43 @@ RestoreSentPosts(SENT_POSTS_STORAGE).catch(LogMessageOrError);
 /**
  * @param {import('../types/telegraf').DefaultMessage} messageToMark
  * @param {number} senderId
+ * @param {boolean} [canEdit] Saved for later versions of Telegraf/API when
+ * bots will have same editing privileges as users
  * @returns {void}
  */
-export const MarkSentPost = (messageToMark, senderId) => {
+export const MarkSentPost = (messageToMark, senderId, canEdit = false) => {
   if (!messageToMark || !senderId) return;
 
   /** @type {import('../types/sent-posts').SentPost} */
   const storingPost = {
     messageId: messageToMark.message_id,
-    senderId,
-    mediaGroupId: messageToMark.media_group_id || undefined,
     timestamp: Date.now(),
-    readySpoiler: CreateSpoilerFromMessage(messageToMark),
+    senderId,
+    canEdit,
+
+    mediaGroupId: messageToMark.media_group_id || undefined,
+    type:
+      'photo' in messageToMark
+        ? 'photo'
+        : 'animation' in messageToMark
+        ? 'animation'
+        : 'video' in messageToMark
+        ? 'video'
+        : 'text' in messageToMark
+        ? 'text'
+        : '',
+    source:
+      'photo' in messageToMark
+        ? messageToMark.photo?.pop()?.file_id
+        : 'animation' in messageToMark
+        ? messageToMark.animation?.file_id
+        : 'video' in messageToMark
+        ? messageToMark.video?.file_id
+        : 'text' in messageToMark
+        ? messageToMark.text
+        : '',
+    caption: 'caption' in messageToMark ? messageToMark.caption : undefined,
+    keyboard: 'reply_markup' in messageToMark ? messageToMark.reply_markup : undefined,
   };
 
   /** Deleting messages, sent earlier than day ago */

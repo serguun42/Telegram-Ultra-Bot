@@ -19,7 +19,7 @@ const WrapForOutput = (...args) =>
  */
 const LogMessageOrError = (...args) => {
   const containsError = args.some(
-    (message) => message instanceof Error || (typeof message === 'string' && /test/i.test(message))
+    (message) => message instanceof Error || (typeof message === 'string' && /error/i.test(message))
   );
   const out = containsError ? console.error : console.log;
   const wrapped = WrapForOutput(...args);

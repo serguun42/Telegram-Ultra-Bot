@@ -2,12 +2,12 @@ import { createReadStream } from 'fs';
 import { Markup } from 'telegraf';
 import { PrepareCaption } from './common.js';
 import LogMessageOrError from './log.js';
-import { MarkSentPost } from './marking-posts.js';
+import { ForgetSentPost, MarkSentPost } from './marking-posts.js';
 import SendingWrapper from './sending-wrapper.js';
 import { SocialPick, VideoDone } from './social-picker.js';
 
 /**
- * @param {{ ctx: import('../types/telegraf').TelegramContext, givenURL: string, deleteSource?: boolean }} params
+ * @param {{ ctx: import('../types/telegraf').DefaultContext, givenURL: string, deleteSource?: boolean }} params
  * @returns {void}
  */
 const MakePost = ({ ctx, givenURL, deleteSource }) => {
@@ -78,9 +78,12 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
             /** @param {import('../types/telegraf').DefaultMessage} sentMessage */ (sentMessage) => {
               if (media.filename) VideoDone(media.filename);
 
-              MarkSentPost(sentMessage, from.id);
+              MarkSentPost(sentMessage, from.id, true);
 
-              if (deleteSource) return ctx.deleteMessage(ctx.message.message_id);
+              if (deleteSource) {
+                ForgetSentPost({ messageId: ctx.message.message_id });
+                return ctx.deleteMessage(ctx.message.message_id);
+              }
               return Promise.resolve(true);
             }
           )
@@ -125,7 +128,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
         SendingWrapper(() => ctx.sendMediaGroup(mediaGroupItems, extra))
           .then(
             /** @param {import('../types/telegraf').DefaultMessage[]} sentMediaGroup */ (sentMediaGroup) => {
-              sentMediaGroup.forEach((sentMessage) => MarkSentPost(sentMessage, from.id));
+              sentMediaGroup.forEach((sentMessage) => MarkSentPost(sentMessage, from.id, true));
 
               return SendingWrapper(() =>
                 ctx
@@ -165,9 +168,12 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
               if (media.filename) VideoDone(media.filename);
             });
 
-            MarkSentPost(sentMessage, from.id);
+            MarkSentPost(sentMessage, from.id, true);
 
-            if (deleteSource) return ctx.deleteMessage(ctx.message.message_id);
+            if (deleteSource) {
+              ForgetSentPost({ messageId: ctx.message.message_id });
+              return ctx.deleteMessage(ctx.message.message_id);
+            }
             return Promise.resolve(true);
           })
           .catch(LogMessageOrError);

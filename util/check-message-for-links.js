@@ -57,7 +57,7 @@ const CheckForLink = (givenURL) => {
 /**
  * Checks whole message for links and make post with them
  *
- * @param {import('../types/telegraf').TelegramContext} ctx
+ * @param {import('../types/telegraf').DefaultContext} ctx
  * @param {import("telegraf/typings/core/types/typegram").Message} message
  * @param {boolean} [ableToDeleteSource]
  * @returns {void}

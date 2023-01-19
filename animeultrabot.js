@@ -4,7 +4,7 @@ import { Telegraf } from 'telegraf';
 import IS_DEV from './util/is-dev.js';
 import LogMessageOrError from './util/log.js';
 import { GetUsername } from './util/common.js';
-import { GetSpoiler, MarkSpoiler, MarkSentPost } from './util/marking-posts.js';
+import { MarkSentPost } from './util/marking-posts.js';
 import { LoadTelegramConfig } from './util/load-configs.js';
 import CheckCommandAvailability from './util/check-command-availability.js';
 import CheckMessageForLinks from './util/check-message-for-links.js';
@@ -12,6 +12,7 @@ import DeleteCommand from './commands/delete-command.js';
 import KhaleesiCommand from './commands/khaleesi-command.js';
 import ChebotarbCommand from './commands/chebotarb-command.js';
 import LoadCommand from './commands/load-command.js';
+import SpoilerCommand from './commands/spoiler-command.js';
 import SendingWrapper from './util/sending-wrapper.js';
 
 const TELEGRAM_CONFIG = LoadTelegramConfig();
@@ -30,6 +31,7 @@ const telegraf = new Telegraf(
 );
 const { telegram } = telegraf;
 
+/** @type {import('./types/commands').CommandsStorage} */
 const COMMANDS = {
   help: LoadCommand('help', TELEGRAM_CONFIG),
   start: LoadCommand('help', TELEGRAM_CONFIG),
@@ -38,49 +40,106 @@ const COMMANDS = {
   aboutspoiler: LoadCommand('aboutspoiler', TELEGRAM_CONFIG),
   aboutdelete: LoadCommand('aboutdelete', TELEGRAM_CONFIG),
   delete: (ctx) => DeleteCommand(ctx),
+  spoiler: (ctx) => SpoilerCommand(ctx),
   khaleesi: (ctx) => KhaleesiCommand(ctx),
   chebotarb: (ctx) => ChebotarbCommand(ctx, telegram),
-  testcommand: `TmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXAKTmV2ZXIgZ29ubmEgbGV0IHlvdSBkb3du\
-Ck5ldmVyIGdvbm5hIHJ1biBhcm91bmQgYW5kIGRlc2VydCB5b3UKTmV2ZXIgZ29u\
-bmEgbWFrZSB5b3UgY3J5Ck5ldmVyIGdvbm5hIHNheSBnb29kYnllCk5ldmVyIGdv\
-bm5hIHRlbGwgYSBsaWUgYW5kIGh1cnQgeW91`,
+  testcommand: `I'm just a test command that returns string`,
 };
 
-const botStartedTime = Date.now();
-telegraf.on('text', (ctx) => {
-  if (Date.now() - botStartedTime < 1000 * 15 && !IS_DEV) return;
-
-  const { chat, from, message } = ctx;
-  const { text } = message;
-  if (!text) return;
+/**
+ * @param {import('./types/telegraf').NewMemberContext} ctx
+ * @returns {void}
+ */
+const HandleNewChatMembers = (ctx) => {
+  const { chat, message } = ctx;
+  if (chat.type === 'private') return;
 
   const knownChat = CHATS_LIST.find((chatFromConfig) => chatFromConfig.id === chat.id);
-  if (chat.type !== 'private') {
+  if (!knownChat) {
+    LogMessageOrError(`New group. ID: ${chat.id}, title: ${chat.title}, type: ${chat.type}`);
+    return;
+  }
+
+  if (!knownChat.enabled) return;
+
+  const { welcome } = knownChat;
+  if (!welcome) return;
+
+  if (welcome.type === 'text') {
+    ctx
+      .sendMessage(
+        welcome.message.replace('__USERNAME__', GetUsername(message.new_chat_member || message.new_chat_members[0])),
+        {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          reply_to_message_id: message.message_id,
+          allow_sending_without_reply: true,
+          disable_notification: true,
+        }
+      )
+      .catch(LogMessageOrError);
+  } else if (welcome.type === 'gif') {
+    ctx
+      .sendAnimation(
+        welcome.message.filename ? { source: createReadStream(welcome.message.filename) } : welcome.message.file_id,
+        {
+          caption: welcome.message.caption
+            ? welcome.message.caption.replace(
+                '__USERNAME__',
+                GetUsername(message.new_chat_member || message.new_chat_members[0])
+              )
+            : '',
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          reply_to_message_id: message.message_id,
+          allow_sending_without_reply: true,
+          disable_notification: true,
+        }
+      )
+      .catch(LogMessageOrError);
+  }
+};
+
+/**
+ * @param {import('./types/telegraf').DefaultContext} ctx
+ * @returns {void}
+ */
+const HandleTextOrCaptionable = (ctx) => {
+  const { chat, from, message } = ctx;
+
+  const textMessage = 'text' in message;
+  const mediaMessage = 'caption' in message;
+  const text = (textMessage ? message.text : mediaMessage ? message.caption : '').trim();
+
+  const knownChat = CHATS_LIST.find((chatFromConfig) => chatFromConfig.id === chat.id);
+  if (chat.type === 'private') {
+    LogMessageOrError(
+      `Private chat – ${from.first_name} ${from.last_name || ''} (lang: ${from.language_code}) (${
+        from.username ? `@${from.username}` : `id: ${from.id}`
+      }) – text: ${text}`
+    );
+  } else {
     if (!knownChat) {
-      LogMessageOrError('New group', chat.id, chat.title, chat.type);
+      LogMessageOrError(`New group. ID: ${chat.id}, title: ${chat.title}, type: ${chat.type}`);
       return;
     }
 
     if (!knownChat.enabled) return;
-  } else {
-    LogMessageOrError(
-      `Private chat – ${from.first_name} ${from.last_name || ''} (lang: ${from.language_code}) (${
-        from.username ? `@${from.username}` : `id: ${from.id}`
-      }) – text: ${message.text}`
-    );
+
+    MarkSentPost(message, from.id, false);
   }
 
-  if (chat.type !== 'private' && new RegExp(`^/spoiler(@${BOT_USERNAME})?\\b`, 'i').test(text))
-    return MarkSpoiler(ctx, 'reply');
+  if (!text) return;
 
   const commandMatch = text.match(
-    new RegExp(`^/(?<commandName>[\\w]+)${chat.type === 'private' ? '' : `@${BOT_USERNAME}`}`, 'i')
+    new RegExp(`^/(?<commandName>[\\w]+)${chat.type === 'private' ? '' : `@${BOT_USERNAME}\\b`}`, 'i')
   );
+  /** @type {import('./types/commands').CommandName} */
   const commandName = commandMatch?.groups?.commandName || '';
-  const commandAction = COMMANDS[commandName] || null;
+  const commandAction = COMMANDS[commandName];
 
   if (commandAction) {
-    if (!CheckCommandAvailability(from)) return;
+    if (!CheckCommandAvailability(from, commandName)) return;
 
     if (typeof commandAction === 'string') {
       SendingWrapper(() =>
@@ -92,6 +151,8 @@ telegraf.on('text', (ctx) => {
       return;
     }
 
+    if (chat.type === 'private') return;
+
     if (typeof commandAction === 'function') {
       commandAction(ctx);
       return;
@@ -100,8 +161,9 @@ telegraf.on('text', (ctx) => {
 
   if (chat.type === 'private') return;
 
-  if (new RegExp(SPECIAL_PHRASE.regexp, 'i').test(text.trim())) {
+  if (new RegExp(SPECIAL_PHRASE.regexp, 'i').test(text)) {
     if (!CheckCommandAvailability(from)) return;
+
     const chance = Math.random();
     if (chance > 1 / 2) return;
 
@@ -134,133 +196,21 @@ telegraf.on('text', (ctx) => {
     return;
   }
 
-  CheckMessageForLinks(ctx, message, true);
-});
-
-/**
- * @param {"animation" | "photo" | "video"} eventType
- */
-const SpoilerWatchGenericEvent = (eventType) => {
-  telegraf.on(eventType, (ctx) => {
-    if (Date.now() - botStartedTime < 1000 * 15 && !IS_DEV) return;
-
-    const { chat, message } = ctx;
-
-    CHATS_LIST.forEach((chatFromList) => {
-      if (!chatFromList.enabled) return;
-      if (chatFromList.id !== chat.id) return;
-
-      MarkSentPost(message, ctx.from.id);
-      if (!(message.caption && message[eventType])) return;
-
-      if (new RegExp(`^/spoiler(@${BOT_USERNAME})?\\b`, 'i').test(message.caption)) return MarkSpoiler(ctx, 'self');
-
-      CheckMessageForLinks(ctx, message, false);
-    });
-  });
+  CheckMessageForLinks(ctx, message, !mediaMessage);
 };
 
-SpoilerWatchGenericEvent('animation');
-SpoilerWatchGenericEvent('photo');
-SpoilerWatchGenericEvent('video');
+const botStartedTime = Date.now();
+telegraf.on('message', (ctx) => {
+  if (Date.now() - botStartedTime < 1000 * 15 && !IS_DEV) return;
 
-telegraf.on('new_chat_members', (ctx) => {
   const { message } = ctx;
-  if (!message) return LogMessageOrError('No message on new_chat_member!');
 
-  const { chat } = message;
-
-  CHATS_LIST.forEach((chatFromList) => {
-    if (!chatFromList.enabled) return false;
-    if (chatFromList.id !== chat.id) return false;
-
-    const { welcome } = chatFromList;
-    if (!welcome) return false;
-
-    if (welcome.type === 'text') {
-      ctx
-        .sendMessage(
-          welcome.message.replace('__USERNAME__', GetUsername(message.new_chat_member || message.new_chat_members[0])),
-          {
-            parse_mode: 'HTML',
-            disable_web_page_preview: true,
-            reply_to_message_id: message.message_id,
-            allow_sending_without_reply: true,
-            disable_notification: true,
-          }
-        )
-        .catch(LogMessageOrError);
-    } else if (welcome.type === 'gif') {
-      ctx
-        .sendAnimation(
-          welcome.message.filename ? { source: createReadStream(welcome.message.filename) } : welcome.message.file_id,
-          {
-            caption: welcome.message.caption
-              ? welcome.message.caption.replace(
-                  '__USERNAME__',
-                  GetUsername(message.new_chat_member || message.new_chat_members[0])
-                )
-              : '',
-            parse_mode: 'HTML',
-            disable_web_page_preview: true,
-            reply_to_message_id: message.message_id,
-            allow_sending_without_reply: true,
-            disable_notification: true,
-          }
-        )
-        .catch(LogMessageOrError);
-    }
-  });
+  if ('new_chat_members' in message) HandleNewChatMembers(ctx);
+  if ('text' in message || 'photo' in message || 'video' in message || 'animation' in message || 'caption' in message)
+    HandleTextOrCaptionable(ctx);
 });
 
 telegraf.launch();
-
-telegraf.action(/^SPOILER(\w+)/, (ctx) => {
-  const { from } = ctx;
-
-  const foundStoredSpoiler = GetSpoiler(ctx?.match?.[1]);
-  if (!foundStoredSpoiler) {
-    ctx.answerCbQuery('Спойлер настолько ужасен, что я его потерял 😬. Вот растяпа!', true).catch(LogMessageOrError);
-    return;
-  }
-
-  const action =
-    foundStoredSpoiler.type === 'photo'
-      ? telegram.sendPhoto(from.id, foundStoredSpoiler.source, { caption: foundStoredSpoiler.caption })
-      : foundStoredSpoiler.type === 'animation'
-      ? telegram.sendAnimation(from.id, foundStoredSpoiler.source, { caption: foundStoredSpoiler.caption })
-      : foundStoredSpoiler.type === 'video'
-      ? telegram.sendVideo(from.id, foundStoredSpoiler.source, { caption: foundStoredSpoiler.caption })
-      : foundStoredSpoiler.type === 'text'
-      ? telegram.sendMessage(from.id, foundStoredSpoiler.source)
-      : foundStoredSpoiler.type === 'group'
-      ? telegram
-          .sendMediaGroup(
-            from.id,
-            foundStoredSpoiler.items
-              .filter((item) => ['photo', 'video'].includes(item.type))
-              .map((item) => ({
-                type: item.type,
-                media: item.source,
-                caption: item.caption,
-              }))
-          )
-          .then(() => {
-            const textMessageFromMediaGroup = foundStoredSpoiler.items.find((item) => item.type === 'text');
-            if (textMessageFromMediaGroup) telegram.sendMessage(from.id, textMessageFromMediaGroup.source);
-          })
-      : Promise.reject(new Error(`Unknown action with spoiler: ${JSON.stringify(foundStoredSpoiler)}`));
-
-  action
-    .then(() => ctx.answerCbQuery('Отправил тебе в ЛС!'))
-    .catch(
-      /** @param {import("telegraf").TelegramError} e */ (e) => {
-        if (e?.code === 403 || e?.response?.error_code === 403)
-          ctx.answerCbQuery('Не могу отправить: начни диалог с ботом');
-        else LogMessageOrError(e);
-      }
-    );
-});
 
 process.on('unhandledRejection', (reason, promise) =>
   LogMessageOrError('Unhandled Rejection at: Promise', promise, 'reason:', reason)
