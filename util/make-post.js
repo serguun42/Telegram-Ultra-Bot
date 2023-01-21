@@ -7,13 +7,15 @@ import SendingWrapper from './sending-wrapper.js';
 import { SocialPick, VideoDone } from './social-picker.js';
 
 /**
- * @param {{ ctx: import('../types/telegraf').DefaultContext, givenURL: string, deleteSource?: boolean }} params
+ * @param {import('../types/telegraf').DefaultContext} ctx
+ * @param {string | URL} postURL
+ * @param {boolean} [deleteSource]
  * @returns {void}
  */
-const MakePost = ({ ctx, givenURL, deleteSource }) => {
+const MakePost = (ctx, postURL, deleteSource = false) => {
   const { from } = ctx;
 
-  SocialPick(givenURL)
+  SocialPick(postURL)
     .then((socialPost) => {
       /** Post does not contain any media */
       if (!socialPost?.medias?.length) return;
@@ -85,7 +87,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
             }
             return Promise.resolve(true);
           })
-          .catch((e) => LogMessageOrError(`Making post ${givenURL}`, e));
+          .catch((e) => LogMessageOrError(`Making post ${postURL}`, e));
       } else {
         const readyMedia = socialPost.medias
           .filter(
@@ -96,7 +98,7 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
             return media;
           });
         if (!readyMedia.length) {
-          LogMessageOrError(new Error(`Making post ${givenURL}. Empty <readyMedia> for media group`));
+          LogMessageOrError(new Error(`Making post ${postURL}. Empty <readyMedia> for media group`));
           return;
         }
 
@@ -183,10 +185,10 @@ const MakePost = ({ ctx, givenURL, deleteSource }) => {
             }
             return Promise.resolve(true);
           })
-          .catch((e) => LogMessageOrError(`Making post ${givenURL}`, e));
+          .catch((e) => LogMessageOrError(`Making post ${postURL}`, e));
       }
     })
-    .catch((e) => LogMessageOrError(`Making post ${givenURL}`, e));
+    .catch((e) => LogMessageOrError(`Making post ${postURL}`, e));
 };
 
 export default MakePost;

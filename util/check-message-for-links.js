@@ -2,10 +2,8 @@ import { SafeParseURL } from './common.js';
 import MakePost from './make-post.js';
 
 /**
- * Checks whether giver URL can be parser with Social-Picker-API
- *
  * @param {string} givenURL
- * @returns {boolean}
+ * @returns {{ status: boolean, platform: string, url: URL }}
  */
 const CheckForLink = (givenURL) => {
   const url = SafeParseURL(givenURL);
@@ -17,41 +15,63 @@ const CheckForLink = (givenURL) => {
     url.hostname === 'nitter.net' ||
     url.hostname === 'www.nitter.net' ||
     url.hostname === 'mobile.nitter.net' ||
-    url.hostname === 'vxtwitter.com'
+    url.hostname === 'vxtwitter.com' ||
+    url.hostname === 'fxtwitter.com'
   )
-    return true;
-  if (url.hostname === 'pbs.twimg.com' || url.hostname === 'video.twimg.com') return true;
-  if (url.hostname === 'instagram.com' || url.hostname === 'www.instagram.com') return true;
+    return { status: true, platform: 'Twitter', url };
+  if (url.hostname === 'pbs.twimg.com' || url.hostname === 'video.twimg.com')
+    return { status: true, platform: 'TwitterDirect', url };
+  if (url.hostname === 'instagram.com' || url.hostname === 'www.instagram.com')
+    return { status: true, platform: 'Instagram', url };
   if (
     url.hostname === 'reddit.com' ||
     url.hostname === 'www.reddit.com' ||
     url.hostname === 'old.reddit.com' ||
     url.hostname === 'redd.it'
   )
-    return true;
-  if (url.hostname === 'pixiv.net' || url.hostname === 'www.pixiv.net') return true;
-  if (url.hostname === 'i.pximg.net') return true;
-  if (/tumblr\.(com|co\.\w+|org)$/i.test(url.hostname || '')) return true;
-  if (url.hostname === 'danbooru.donmai.us') return true;
-  if (url.hostname === 'gelbooru.com' || url.hostname === 'www.gelbooru.com') return true;
+    return { status: true, platform: 'Reddit', url };
+  if (url.hostname === 'pixiv.net' || url.hostname === 'www.pixiv.net') return { status: true, platform: 'Pixiv', url };
+  if (url.hostname === 'i.pximg.net') return { status: true, platform: 'PixivDirect', url };
+  if (/tumblr\.(com|co\.\w+|org)$/i.test(url.hostname || '')) return { status: true, platform: 'Tumblr', url };
+  if (url.hostname === 'danbooru.donmai.us') return { status: true, platform: 'Danbooru', url };
+  if (url.hostname === 'gelbooru.com' || url.hostname === 'www.gelbooru.com')
+    return { status: true, platform: 'Gelbooru', url };
   if (
     url.hostname === 'konachan.com' ||
     url.hostname === 'konachan.net' ||
     url.hostname === 'www.konachan.com' ||
     url.hostname === 'www.konachan.net'
   )
-    return true;
-  if (url.hostname === 'yande.re' || url.hostname === 'www.yande.re') return true;
-  if (url.hostname === 'e-shuushuu.net' || url.hostname === 'www.e-shuushuu.net') return true;
-  if (url.hostname === 'chan.sankakucomplex.com') return true;
-  if (url.hostname === 'zerochan.net' || url.hostname === 'www.zerochan.net') return true;
-  if (url.hostname === 'anime-pictures.net' || url.hostname === 'www.anime-pictures.net') return true;
+    return { status: true, platform: 'Konachan', url };
+  if (url.hostname === 'yande.re' || url.hostname === 'www.yande.re') return { status: true, platform: 'Yandere', url };
+  if (url.hostname === 'e-shuushuu.net' || url.hostname === 'www.e-shuushuu.net')
+    return { status: true, platform: 'Eshuushuu', url };
+  if (url.hostname === 'chan.sankakucomplex.com') return { status: true, platform: 'Sankaku', url };
+  if (url.hostname === 'zerochan.net' || url.hostname === 'www.zerochan.net')
+    return { status: true, platform: 'Zerochan', url };
+  if (url.hostname === 'anime-pictures.net' || url.hostname === 'www.anime-pictures.net')
+    return { status: true, platform: 'AnimePictures', url };
   if (url.hostname === 'kemono.party' || url.hostname === 'www.kemono.party' || url.hostname === 'beta.kemono.party')
-    return true;
-  if (url.hostname === 'dtf.ru') return true;
-  if (/^(m\.|img\d+\.)?(joy|safe|anime\.|porn|fap)?reactor\.(cc|com)$/.test(url.hostname)) return true;
-  if (url.hostname === 'coub.com') return true;
-  return false;
+    return { status: true, platform: 'KemonoParty', url };
+  if (
+    url.hostname === 'youtube.com' ||
+    url.hostname === 'www.youtube.com' ||
+    url.hostname === 'youtu.be' ||
+    url.hostname === 'm.youtube.com'
+  )
+    return { status: true, platform: 'Youtube', url };
+  if (
+    url.hostname === 'tjournal.ru' ||
+    url.hostname === 'the.tj' ||
+    url.hostname === 'dtf.ru' ||
+    url.hostname === 'vc.ru'
+  )
+    return { status: true, platform: 'Osnova', url };
+  if (/^(m\.|img\d+\.)?(joy|safe|anime\.|porn|fap)?reactor\.(cc|com)$/.test(url.hostname))
+    return { status: true, platform: 'Joyreactor', url };
+  if (url.hostname === 'coub.com') return { status: true, platform: 'Coub', url };
+
+  return { status: false, platform: '', url };
 };
 
 /**
@@ -77,33 +97,24 @@ const CheckMessageForLinks = (ctx, message, ableToDeleteSource = false) => {
     messageEntities[0].length === messageText.length;
 
   if (containsOneAndOnlyLink) {
-    if (CheckForLink(messageText))
-      MakePost({
-        ctx,
-        givenURL: messageText,
-        deleteSource: ableToDeleteSource,
-      });
-
+    const checkedLink = CheckForLink(messageText);
+    if (checkedLink?.status) MakePost(ctx, checkedLink.url, ableToDeleteSource);
     return;
   }
 
-  /** @type {{ offset: number, length: number, type: "url" }[]} */
   const urlEntities = messageEntities.filter((entity) => entity.type === 'url');
 
   /** @type {string[]} */
   const textURLs = urlEntities.map((entity) => messageText.slice(entity.offset, entity.offset + entity.length));
 
-  const validURLs = textURLs
-    .filter((textURL) => CheckForLink(textURL))
+  const checkedLinks = textURLs
+    .map((textURL) => CheckForLink(textURL))
+    .filter((checkedLink) => checkedLink?.status)
+    .map((checkedLink) => checkedLink.url?.href)
+    .filter(Boolean)
     .filter((link, index, array) => index === array.indexOf(link));
 
-  validURLs.forEach((validURL) =>
-    MakePost({
-      ctx,
-      givenURL: validURL,
-      deleteSource: false,
-    })
-  );
+  checkedLinks.forEach((checkedLink) => MakePost(ctx, checkedLink, false));
 };
 
 export default CheckMessageForLinks;

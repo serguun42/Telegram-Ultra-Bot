@@ -132,7 +132,7 @@ const HandleTextOrCaptionable = (ctx) => {
   if (!text) return;
 
   const commandMatch = text.match(
-    new RegExp(`^/(?<commandName>[\\w]+)${chat.type === 'private' ? '' : `@${BOT_USERNAME}\\b`}`, 'i')
+    new RegExp(`^/(?<commandName>\\w+)(?:@${BOT_USERNAME})${chat.type === 'private' ? '?' : ''}\\b`, 'i')
   );
   /** @type {import('./types/commands').CommandName} */
   const commandName = commandMatch?.groups?.commandName || '';

@@ -8,11 +8,11 @@ const SOCIAL_PICKER_API_BASE = `http${SOCIAL_PICKER_CONFIG.secure ? 's' : ''}://
 }/`;
 
 /**
- * @param {string} givenURL
+ * @param {string} postURL
  * @returns {Promise<import("../types/social-post").SocialPost>}
  */
-export const SocialPick = (givenURL) => {
-  return fetch(new URL(`/?url=${encodeURIComponent(givenURL)}`, SOCIAL_PICKER_API_BASE).href).then((res) => {
+export const SocialPick = (postURL) => {
+  return fetch(new URL(`/?url=${encodeURIComponent(postURL)}`, SOCIAL_PICKER_API_BASE).href).then((res) => {
     if (res.ok) return res.json();
 
     return Promise.reject(new Error(`SocialPick / Status code: ${res.status} ${res.statusText}`));

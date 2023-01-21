@@ -1,5 +1,3 @@
-import { Telegram } from 'telegraf';
-import { TelegramConfig } from './configs';
 import { DefaultContext } from './telegraf';
 
 type TextCommands = 'help' | 'start' | 'aboutpicker' | 'aboutlist' | 'aboutspoiler' | 'aboutdelete' | 'testcommand';
