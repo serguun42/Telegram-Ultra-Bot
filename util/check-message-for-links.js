@@ -53,20 +53,7 @@ const CheckForLink = (givenURL) => {
     return { status: true, platform: 'AnimePictures', url };
   if (url.hostname === 'kemono.party' || url.hostname === 'www.kemono.party' || url.hostname === 'beta.kemono.party')
     return { status: true, platform: 'KemonoParty', url };
-  if (
-    url.hostname === 'youtube.com' ||
-    url.hostname === 'www.youtube.com' ||
-    url.hostname === 'youtu.be' ||
-    url.hostname === 'm.youtube.com'
-  )
-    return { status: true, platform: 'Youtube', url };
-  if (
-    url.hostname === 'tjournal.ru' ||
-    url.hostname === 'the.tj' ||
-    url.hostname === 'dtf.ru' ||
-    url.hostname === 'vc.ru'
-  )
-    return { status: true, platform: 'Osnova', url };
+  if (url.hostname === 'dtf.ru') return { status: true, platform: 'Osnova', url };
   if (/^(m\.|img\d+\.)?(joy|safe|anime\.|porn|fap)?reactor\.(cc|com)$/.test(url.hostname))
     return { status: true, platform: 'Joyreactor', url };
   if (url.hostname === 'coub.com') return { status: true, platform: 'Coub', url };

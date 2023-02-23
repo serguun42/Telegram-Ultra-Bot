@@ -39,7 +39,11 @@ const MakePost = (ctx, postURL, deleteSource = false) => {
           disable_web_page_preview: true,
           parse_mode: 'HTML',
           caption,
-          reply_to_message_id: deleteSource ? null : ctx.message.message_id,
+          reply_to_message_id: deleteSource
+            ? ctx.message.reply_to_message
+              ? ctx.message.reply_to_message.message_id
+              : null
+            : ctx.message.message_id,
           allow_sending_without_reply: true,
           disable_notification: true,
           reply_markup: Markup.inlineKeyboard(
@@ -67,7 +71,6 @@ const MakePost = (ctx, postURL, deleteSource = false) => {
         };
 
         if (media.type === 'video') extra.supports_streaming = true;
-        if (ctx.message.reply_to_message) extra.reply_to_message_id = ctx.message.reply_to_message.message_id;
 
         SendingWrapper(() =>
           media.type === 'video'
@@ -131,12 +134,14 @@ const MakePost = (ctx, postURL, deleteSource = false) => {
 
         /** @type {import('../types/telegraf').MediaGroupExtra} */
         const extra = {
-          reply_to_message_id: deleteSource ? null : ctx.message.message_id,
+          reply_to_message_id: deleteSource
+            ? ctx.message.reply_to_message
+              ? ctx.message.reply_to_message.message_id
+              : null
+            : ctx.message.message_id,
           allow_sending_without_reply: true,
           disable_notification: true,
         };
-
-        if (ctx.message.reply_to_message) extra.reply_to_message_id = ctx.message.reply_to_message.message_id;
 
         SendingWrapper(() => ctx.sendMediaGroup(mediaGroupItems, extra))
           .then((sentMediaGroup) => {
