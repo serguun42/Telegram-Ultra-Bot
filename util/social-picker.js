@@ -8,7 +8,7 @@ const SOCIAL_PICKER_API_BASE = `http${SOCIAL_PICKER_CONFIG.secure ? 's' : ''}://
 }/`;
 
 /**
- * @param {string} postURL
+ * @param {string | URL} postURL
  * @returns {Promise<import("../types/social-post").SocialPost>}
  */
 export const SocialPick = (postURL) => {

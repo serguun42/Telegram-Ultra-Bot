@@ -21,3 +21,4 @@
 • Пост на <b>KemonoParty</b> (изображения)
 • Пост на <b>Joyreactor</b> (изображения и гифки, <i>[joy<code>/</code>safe<code>/</code>anime<code>/</code>etc…]reactor<code>.</code>сс</i>, включая мобильные версии и прямые ссылки на медиа-файлы)
 • Видео в <b>Coub</b>
+• Видео в <b>Youtube</b> (до определённого размера файла)

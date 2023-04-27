@@ -1,4 +1,6 @@
 import { createReadStream } from 'fs';
+import { Readable } from 'stream';
+import fetch from 'node-fetch';
 import { Markup } from 'telegraf';
 import { PrepareCaption } from './common.js';
 import LogMessageOrError from './log.js';
@@ -8,15 +10,34 @@ import { SocialPick, VideoDone } from './social-picker.js';
 
 /**
  * @param {import('../types/telegraf').DefaultContext} ctx
- * @param {string | URL} postURL
+ * @param {{ status: boolean, platform: string, url: URL }} checkedLink
  * @param {boolean} [deleteSource]
  * @returns {void}
  */
-const MakePost = (ctx, postURL, deleteSource = false) => {
+const MakePost = (ctx, checkedLink, deleteSource = false) => {
   const { from } = ctx;
 
-  SocialPick(postURL)
-    .then((socialPost) => {
+  SocialPick(checkedLink.url)
+    .then(async (socialPost) => {
+      if (checkedLink.platform === 'Youtube') {
+        const validVideoOptions = socialPost.medias
+          .filter(
+            (media) =>
+              /video\s\+\saudio/i.test(media.description) &&
+              media.filetype === 'mp4' &&
+              !Number.isNaN(media.filesize) &&
+              media.filesize < 1024 * 1024 * 20
+          )
+          .sort((prev, next) => prev.filesize - next.filesize);
+
+        const bestVideo = validVideoOptions.pop();
+        if (!bestVideo) return;
+
+        bestVideo.filename = await fetch(bestVideo.externalUrl).then((res) => res.body);
+        bestVideo.externalUrl = checkedLink.url;
+        socialPost.medias = [bestVideo];
+      }
+
       /** Post does not contain any media */
       if (!socialPost?.medias?.length) return;
 
@@ -29,7 +50,7 @@ const MakePost = (ctx, postURL, deleteSource = false) => {
 
         /** @type {import("telegraf/typings/core/types/typegram").InputFile} */
         const inputFile = media.filename
-          ? { source: createReadStream(media.filename) }
+          ? { source: media.filename instanceof Readable ? media.filename : createReadStream(media.filename) }
           : media.type === 'gif'
           ? encodeURI(media.externalUrl || media.original)
           : { url: encodeURI(media.externalUrl || media.original) };
@@ -90,7 +111,7 @@ const MakePost = (ctx, postURL, deleteSource = false) => {
             }
             return Promise.resolve(true);
           })
-          .catch((e) => LogMessageOrError(`Making post ${postURL}`, e));
+          .catch((e) => LogMessageOrError(`Making post ${checkedLink.url}`, e));
       } else {
         const readyMedia = socialPost.medias
           .filter(
@@ -101,7 +122,7 @@ const MakePost = (ctx, postURL, deleteSource = false) => {
             return media;
           });
         if (!readyMedia.length) {
-          LogMessageOrError(new Error(`Making post ${postURL}. Empty <readyMedia> for media group`));
+          LogMessageOrError(new Error(`Making post ${checkedLink.url}. Empty <readyMedia> for media group`));
           return;
         }
 
@@ -121,7 +142,7 @@ const MakePost = (ctx, postURL, deleteSource = false) => {
         /** @type {import("../types/telegraf").MediaGroupItems} */
         const mediaGroupItems = readyMedia.slice(0, 10).map((media) => ({
           media: media.filename
-            ? { source: createReadStream(media.filename) }
+            ? { source: media.filename instanceof Readable ? media.filename : createReadStream(media.filename) }
             : { url: encodeURI(media.externalUrl || media.original) },
           type: media.type,
           supports_streaming: true,
@@ -190,10 +211,10 @@ const MakePost = (ctx, postURL, deleteSource = false) => {
             }
             return Promise.resolve(true);
           })
-          .catch((e) => LogMessageOrError(`Making post ${postURL}`, e));
+          .catch((e) => LogMessageOrError(`Making post ${checkedLink.url}`, e));
       }
     })
-    .catch((e) => LogMessageOrError(`Making post ${postURL}`, e));
+    .catch((e) => LogMessageOrError(`Making post ${checkedLink.url}`, e));
 };
 
 export default MakePost;
