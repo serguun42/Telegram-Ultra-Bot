@@ -2,6 +2,7 @@ import { createReadStream } from 'fs';
 import { Readable } from 'stream';
 import fetch from 'node-fetch';
 import { Markup } from 'telegraf';
+import IS_DEV from './is-dev.js';
 import { PrepareCaption } from './common.js';
 import LogMessageOrError from './log.js';
 import { ForgetSentPost, MarkSentPost } from './marking-posts.js';
@@ -20,19 +21,23 @@ const MakePost = (ctx, checkedLink, deleteSource = false) => {
   SocialPick(checkedLink.url)
     .then(async (socialPost) => {
       if (checkedLink.platform === 'Youtube') {
+        /** Limit for Youtube videos in bytes */
+        const YOUTUBE_MAX_FILESIZE = 1024 * 1024 * (IS_DEV ? 50 : 100);
         const validVideoOptions = socialPost.medias
           .filter(
             (media) =>
-              /video\s\+\saudio/i.test(media.description) &&
-              media.filetype === 'mp4' &&
-              !Number.isNaN(media.filesize) &&
-              media.filesize < 1024 * 1024 * 20
+              /video\s\+\saudio/i.test(media.description) && media.filetype === 'mp4' && !Number.isNaN(media.filesize)
           )
           .sort((prev, next) => prev.filesize - next.filesize);
 
         const bestVideo = validVideoOptions.pop();
         if (!bestVideo) return;
+        // Checking only best format for size limit, so 360p file wouldn't be sent for 720p video
+        if (bestVideo.filesize > YOUTUBE_MAX_FILESIZE) return;
 
+        socialPost.caption = `[Youtube ${bestVideo.description.match(/^\S+/)?.[0] || '???px'}] ${socialPost.author} – ${
+          socialPost.caption
+        }`.trim();
         bestVideo.filename = await fetch(bestVideo.externalUrl).then((res) => res.body);
         bestVideo.externalUrl = checkedLink.url;
         socialPost.medias = [bestVideo];
