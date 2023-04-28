@@ -35,7 +35,27 @@ const MakePost = (ctx, checkedLink, deleteSource = false) => {
         // Checking only best format for size limit, so 360p file wouldn't be sent for 720p video
         if (bestVideo.filesize > YOUTUBE_MAX_FILESIZE) return;
 
-        socialPost.caption = `[Youtube ${bestVideo.description.match(/^\S+/)?.[0] || '???px'}] ${socialPost.author} – ${
+        socialPost.caption = `[Youtube ${bestVideo.description.match(/^\S+/)?.[0] || '???p'}] ${socialPost.author} – ${
+          socialPost.caption
+        }`.trim();
+        bestVideo.filename = await fetch(bestVideo.externalUrl).then((res) => res.body);
+        bestVideo.externalUrl = checkedLink.url;
+        socialPost.medias = [bestVideo];
+      }
+
+      if (checkedLink.platform === 'Tiktok') {
+        const validVideoOptions = socialPost.medias
+          .filter((media) => /video\s\+\saudio/i.test(media.description) && media.filetype === 'mp4')
+          .sort((prev, next) => prev.filesize - next.filesize)
+          /** Watermarked is worse */
+          .sort((prev, next) => /watermark/i.test(next.description) - /watermark/i.test(prev.description))
+          /** H265 is better */
+          .sort((prev, next) => /h265/i.test(prev.description) - /h265/i.test(next.description));
+
+        const bestVideo = validVideoOptions.pop();
+        if (!bestVideo) return;
+
+        socialPost.caption = `[Tiktok ${bestVideo.description.match(/^\S+/)?.[0] || '???p'}] ${
           socialPost.caption
         }`.trim();
         bestVideo.filename = await fetch(bestVideo.externalUrl).then((res) => res.body);
