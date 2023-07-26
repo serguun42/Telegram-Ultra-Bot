@@ -1,4 +1,3 @@
-/* eslint-disable consistent-return */
 import { createReadStream } from 'fs';
 import { Telegraf } from 'telegraf';
 import IS_DEV from './util/is-dev.js';
@@ -112,18 +111,8 @@ const HandleTextOrCaptionable = (ctx) => {
   const text = (textMessage ? message.text : mediaMessage ? message.caption : '').trim();
 
   const knownChat = CHATS_LIST.find((chatFromConfig) => chatFromConfig.id === chat.id);
-  if (chat.type === 'private') {
-    LogMessageOrError(
-      `Private chat – ${from.first_name} ${from.last_name || ''} (lang: ${from.language_code}) (${
-        from.username ? `@${from.username}` : `id: ${from.id}`
-      }) – text: ${text}`
-    );
-  } else {
-    if (!knownChat) {
-      LogMessageOrError(`New group. ID: ${chat.id}, title: ${chat.title}, type: ${chat.type}`);
-      return;
-    }
-
+  if (chat.type !== 'private') {
+    if (!knownChat) return;
     if (!knownChat.enabled) return;
 
     MarkSentPost(message, from.id, false);
