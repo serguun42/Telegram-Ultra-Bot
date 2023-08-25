@@ -12,6 +12,9 @@ const CheckForLink = (givenURL) => {
     url.hostname === 'twitter.com' ||
     url.hostname === 'www.twitter.com' ||
     url.hostname === 'mobile.twitter.com' ||
+    url.hostname === 'x.com' ||
+    url.hostname === 'www.x.com' ||
+    url.hostname === 'mobile.x.com' ||
     url.hostname === 'nitter.net' ||
     url.hostname === 'www.nitter.net' ||
     url.hostname === 'mobile.nitter.net' ||
