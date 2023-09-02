@@ -11,7 +11,7 @@ import { SocialPick, VideoDone } from './social-picker.js';
 
 /**
  * @param {import('../types/telegraf').DefaultContext} ctx
- * @param {{ status: boolean, platform: string, url: URL }} checkedLink
+ * @param {import('./check-message-for-links.js').CheckedLink} checkedLink
  * @param {boolean} [deleteSource]
  * @returns {void}
  */
@@ -84,7 +84,7 @@ const MakePost = (ctx, checkedLink, deleteSource = false) => {
         const extra = {
           disable_web_page_preview: true,
           parse_mode: 'HTML',
-          caption,
+          caption: checkedLink.preHidden ? `<tg-spoiler>${caption}</tg-spoiler>` : caption,
           reply_to_message_id: deleteSource
             ? ctx.message.reply_to_message
               ? ctx.message.reply_to_message.message_id
@@ -114,6 +114,7 @@ const MakePost = (ctx, checkedLink, deleteSource = false) => {
                 : null,
             ].filter(Boolean)
           ).reply_markup,
+          has_spoiler: checkedLink.preHidden,
         };
 
         if (media.type === 'video') extra.supports_streaming = true;
@@ -176,6 +177,7 @@ const MakePost = (ctx, checkedLink, deleteSource = false) => {
           caption: `<a href="${encodeURI(
             media.original || media.externalUrl || socialPost.postURL
           )}">Исходник файла</a>`,
+          has_spoiler: checkedLink.preHidden,
         }));
 
         /** @type {import('../types/telegraf').MediaGroupExtra} */
@@ -195,7 +197,7 @@ const MakePost = (ctx, checkedLink, deleteSource = false) => {
 
             return SendingWrapper(() =>
               ctx
-                .sendMessage(caption, {
+                .sendMessage(checkedLink.preHidden ? `<tg-spoiler>${caption}</tg-spoiler>` : caption, {
                   disable_web_page_preview: true,
                   parse_mode: 'HTML',
                   disable_notification: true,

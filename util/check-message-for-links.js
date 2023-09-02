@@ -2,8 +2,15 @@ import { SafeParseURL } from './common.js';
 import MakePost from './make-post.js';
 
 /**
+ * @typedef {object} CheckedLink
+ * @property {boolean} status
+ * @property {string} platform
+ * @property {URL} url
+ * @property {boolean} [preHidden]
+ */
+/**
  * @param {string} givenURL
- * @returns {{ status: boolean, platform: string, url: URL }}
+ * @returns {CheckedLink}
  */
 const CheckForLink = (givenURL) => {
   const url = SafeParseURL(givenURL);
@@ -88,29 +95,45 @@ const CheckMessageForLinks = (ctx, message, ableToDeleteSource = false) => {
 
   if (!messageEntities?.length) return;
 
+  const urlEntities = messageEntities.filter((entity) => entity.type === 'url');
+  const checkedLinks = urlEntities
+    .map((urlEntity) => {
+      const urlText = messageText.slice(urlEntity.offset, urlEntity.offset + urlEntity.length);
+
+      const checkedLink = CheckForLink(urlText);
+
+      const spoilerExistAtSameOffsets =
+        messageEntities.findIndex(
+          (comparing) =>
+            comparing.type === 'spoiler' &&
+            comparing.offset === urlEntity.offset &&
+            comparing.length === urlEntity.length
+        ) > -1;
+      if (spoilerExistAtSameOffsets) checkedLink.preHidden = true;
+
+      return checkedLink;
+    })
+    .filter((checkedLink) => checkedLink?.status && checkedLink.url?.href)
+    .filter((link, index, array) => index === array.findIndex((comparing) => comparing.url?.href === link.url?.href));
+
   const containsOneAndOnlyLink =
-    messageEntities?.length === 1 &&
+    messageEntities.length === 1 &&
     messageEntities[0].type === 'url' &&
     messageEntities[0].offset === 0 &&
     messageEntities[0].length === messageText.length;
 
-  if (containsOneAndOnlyLink) {
-    const checkedLink = CheckForLink(messageText);
-    if (checkedLink?.status) MakePost(ctx, checkedLink, ableToDeleteSource);
-    return;
-  }
+  const containsOneAndOnlyLinkAsSpoiler =
+    messageEntities.length === 2 &&
+    messageEntities[0].type === 'url' &&
+    messageEntities[0].offset === 0 &&
+    messageEntities[0].length === messageText.length &&
+    messageEntities[1].type === 'spoiler' &&
+    messageEntities[1].offset === 0 &&
+    messageEntities[1].length === messageText.length;
 
-  const urlEntities = messageEntities.filter((entity) => entity.type === 'url');
-
-  /** @type {string[]} */
-  const textURLs = urlEntities.map((entity) => messageText.slice(entity.offset, entity.offset + entity.length));
-
-  const checkedLinks = textURLs
-    .map((textURL) => CheckForLink(textURL))
-    .filter((checkedLink) => checkedLink?.status && checkedLink.url?.href)
-    .filter((link, index, array) => index === array.findIndex((comparing) => comparing.url?.href === link.url?.href));
-
-  checkedLinks.forEach((checkedLink) => MakePost(ctx, checkedLink, false));
+  checkedLinks.forEach((checkedLink) =>
+    MakePost(ctx, checkedLink, ableToDeleteSource && (containsOneAndOnlyLink || containsOneAndOnlyLinkAsSpoiler))
+  );
 };
 
 export default CheckMessageForLinks;
