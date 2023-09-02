@@ -11,11 +11,11 @@ import { SocialPick, VideoDone } from './social-picker.js';
 
 /**
  * @param {import('../types/telegraf').DefaultContext} ctx
- * @param {{ status: boolean, platform: string, url: URL }} checkedLink
+ * @param {import('./check-message-for-links.js').CheckedLink} checkedLink
  * @param {boolean} [deleteSource]
  * @returns {void}
  */
-const MakePost = (ctx, checkedLink, deleteSource = false, hidden = false) => {
+const MakePost = (ctx, checkedLink, deleteSource = false) => {
   const { from } = ctx;
 
   SocialPick(checkedLink.url)
@@ -84,7 +84,7 @@ const MakePost = (ctx, checkedLink, deleteSource = false, hidden = false) => {
         const extra = {
           disable_web_page_preview: true,
           parse_mode: 'HTML',
-          caption: hidden ? `<tg-spoiler>${caption}</tg-spoiler>` : caption,
+          caption: checkedLink.preHidden ? `<tg-spoiler>${caption}</tg-spoiler>` : caption,
           reply_to_message_id: deleteSource
             ? ctx.message.reply_to_message
               ? ctx.message.reply_to_message.message_id
@@ -114,7 +114,7 @@ const MakePost = (ctx, checkedLink, deleteSource = false, hidden = false) => {
                 : null,
             ].filter(Boolean)
           ).reply_markup,
-          has_spoiler: hidden ? true : false,
+          has_spoiler: checkedLink.preHidden,
         };
 
         if (media.type === 'video') extra.supports_streaming = true;
@@ -177,7 +177,7 @@ const MakePost = (ctx, checkedLink, deleteSource = false, hidden = false) => {
           caption: `<a href="${encodeURI(
             media.original || media.externalUrl || socialPost.postURL
           )}">Исходник файла</a>`,
-          has_spoiler: hidden ? true : false,
+          has_spoiler: checkedLink.preHidden,
         }));
 
         /** @type {import('../types/telegraf').MediaGroupExtra} */
@@ -197,7 +197,7 @@ const MakePost = (ctx, checkedLink, deleteSource = false, hidden = false) => {
 
             return SendingWrapper(() =>
               ctx
-                .sendMessage(hidden ? `<tg-spoiler>${caption}</tg-spoiler>` : caption, {
+                .sendMessage(checkedLink.preHidden ? `<tg-spoiler>${caption}</tg-spoiler>` : caption, {
                   disable_web_page_preview: true,
                   parse_mode: 'HTML',
                   disable_notification: true,
