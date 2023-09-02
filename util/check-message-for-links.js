@@ -94,9 +94,17 @@ const CheckMessageForLinks = (ctx, message, ableToDeleteSource = false) => {
     messageEntities[0].offset === 0 &&
     messageEntities[0].length === messageText.length;
 
-  if (containsOneAndOnlyLink) {
+  const containsOneAndOnlySpoilerLink =
+    messageEntities?.length === 2 &&
+    messageEntities[0].type === 'url' &&
+    messageEntities[1].type === 'spoiler' &&
+    messageEntities[0].offset === 0 &&
+    messageEntities[0].length === messageText.length &&
+    messageEntities[1].length === messageText.length;
+
+  if (containsOneAndOnlyLink || containsOneAndOnlySpoilerLink) {
     const checkedLink = CheckForLink(messageText);
-    if (checkedLink?.status) MakePost(ctx, checkedLink, ableToDeleteSource);
+    if (checkedLink?.status) MakePost(ctx, checkedLink, ableToDeleteSource, containsOneAndOnlySpoilerLink);
     return;
   }
 
