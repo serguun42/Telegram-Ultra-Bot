@@ -1,41 +1,48 @@
-# Anime Ultra Bot
+# Telegram Ultra Bot
 
-*Sadly, bot is designed to give descriptions, help information and about texts in Russian language so there is no point in translating only this readme. If are still interested in this project with any other language, feel free to open an issue – I'll add capability for i18n configuration.*
+Telegram bot based on Social-Picker-API. Includes features like replacing links to social posts in the group chat to media and managing the group and its content and messages.
 
 ---
 
-## Что умеет?
+## What can it do?
 
-* Обрабатывать ссылки на ресурсы, заменяя их контентом, находящимся по этим ссылкам – см. репозиторий [Social-Picker-API](https://github.com/serguun42/Social-Picker-API) и команды [aboutpicker](./commands/aboutpicker.txt) и [aboutlist](./commands/aboutlist.txt).
-* Скрывать спойлеры командой /spoiler – см. [aboutspoiler](./commands/aboutspoiler.txt).
-* Приветствовать новых пользователей.
-* *Кхалиси*фицировать текст на русском языке (изменяет на текст сообщения, на которое ответили командой `/khaleesi`) – см. [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS).
-* Отвечает случайным стикером из заранее выбранного стикерпака на команду `/cheboratb`.
+- Process links to resources, replacing them with content located at these links – see the repository [Social-Picker-API](https://github.com/serguun42/Social-Picker-API) and commands [aboutpicker](./commands/aboutpicker.txt) & [aboutlist](./commands/aboutlist.txt).
+- Hide spoilers command /spoiler – see [aboutspoiler](./commands/aboutspoiler.txt).
+- Welcome new users with various text & media messages and rules.
+- _Khaleesi_-fy the text in Cyrillic characters (changes by the new text of the message that was replied to by the command `/khaleesi`) – see repo [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS).
+- Respond to a custom command with a random sticker from a pre-selected sticker pack.
 
-### Команды
-1. Установить только необходимые зависимости – `npm i --production`
-2. Запустить production-бота – `npm run production`
+### NPM commands to get started
 
-### Конфигурация
+1. Install only necessary dependencies – `npm i --omit=dev`
+2. Run in production mode – `npm run production`
 
-* [`telegram.json`](./config/telegram.json):
-* * токены для *Telegram*
-* * список чатов
-* * white-list пользователей для использования команд (нет таймаута)
-* * данные админа
-* * приветствия, специальные фразы и стикеры, прочее
-* [`social-picker.json`](./config/social-picker.json)
-* * адреса и порт сервиса [Social Picker API](https://github.com/serguun42/Social-Picker-API)
-* [`pm2.production.json`](./config/pm2.production.json) – config for Node.js daemon `pm2`
-* [`nodemon.dev.json`](./config/nodemon.dev.json) – config development hot-reloader `nodemon`
+### Configuration
 
-### Папки
-* `admin` – скрипты для рассылки сообщений и выходов из Telegram; [admin/README.md](admin/README.md)
-* `commands` – текстовые шаблоны команд для бота, настраиваются при запуске.
-* `util` – разные утилиты
+- [`telegram.json`](./config/telegram.json):
+- - tokens for the _Telegram_
+- - list of enabled chats
+- - white-list of moderation users — disables commands timeout/cool down for them
+- - ID and/or username of the admin
+- - welcome messages, special phrases and stickers, etc.
+- [`social-picker.json`](./config/social-picker.json)
+- - service addresses and ports [Social Picker API](https://github.com/serguun42/Social-Picker-API)
+- [`pm2.production.json`](./config/pm2.production.json) – config for Node.js daemon `pm2`
+- [`nodemon.dev.json`](./config/nodemon.dev.json) – config development hot-reloader `nodemon`
 
-### Полезные ссылки
-* [Telegraf Module for Node.js](https://telegraf.js.org/)
-* [Telegram Bots API](https://core.telegram.org/bots/api)
-* [Social-Picker-API](https://github.com/serguun42/Social-Picker-API)
-* [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS)
+### Folders
+
+- `admin` – utils for mailing new updates, managing Bot API sessions (cloud and local log-out); [admin/README.md](admin/README.md)
+- `commands` – text command templates for the bot, configured at startup
+- `util` – other various utils
+
+### Read more
+
+- [Telegraf Module for Node.js](https://telegraf.js.org/)
+- [Telegram Bots API](https://core.telegram.org/bots/api)
+- [Social-Picker-API](https://github.com/serguun42/Social-Picker-API)
+- [Khaleesi.JS](https://github.com/serguun42/Khaleesi-JS)
+
+---
+
+### [BSL-1.0 License](./LICENSE)
