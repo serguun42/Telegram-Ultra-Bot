@@ -64,10 +64,11 @@ const CheckForLink = (givenURL) => {
   if (
     url.hostname === 'kemono.party' ||
     url.hostname === 'kemono.su' ||
+    url.hostname === 'www.kemono.su' ||
     url.hostname === 'www.kemono.party' ||
     url.hostname === 'beta.kemono.party'
   )
-    return { status: true, platform: 'KemonoParty', url };
+    return { status: true, platform: 'Kemono', url };
   if (
     url.hostname === 'youtube.com' ||
     url.hostname === 'www.youtube.com' ||

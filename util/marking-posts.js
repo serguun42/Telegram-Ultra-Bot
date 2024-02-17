@@ -92,46 +92,46 @@ export const MarkSpoiler = (ctx) => {
             });
         })
     : sentPost.type === 'photo'
-    ? ctx.replyWithPhoto(sentPost.source, {
-        disable_web_page_preview: true,
-        parse_mode: 'HTML',
-        caption: `<tg-spoiler>${PrepareCaption(sentPost.caption)}</tg-spoiler>`,
-        has_spoiler: true,
-        allow_sending_without_reply: true,
-        disable_notification: true,
-        reply_markup: sentPost.keyboard,
-      })
-    : sentPost.type === 'video'
-    ? ctx.replyWithVideo(sentPost.source, {
-        disable_web_page_preview: true,
-        parse_mode: 'HTML',
-        caption: `<tg-spoiler>${PrepareCaption(sentPost.caption)}</tg-spoiler>`,
-        has_spoiler: true,
-        allow_sending_without_reply: true,
-        disable_notification: true,
-        reply_markup: sentPost.keyboard,
-      })
-    : sentPost.type === 'animation'
-    ? ctx.replyWithAnimation(sentPost.source, {
-        disable_web_page_preview: true,
-        parse_mode: 'HTML',
-        caption: `<tg-spoiler>${PrepareCaption(sentPost.caption)}</tg-spoiler>`,
-        has_spoiler: true,
-        allow_sending_without_reply: true,
-        disable_notification: true,
-        reply_markup: sentPost.keyboard,
-      })
-    : sentPost.type === 'text'
-    ? ctx.reply(`<tg-spoiler>${PrepareCaption(sentPost.source)}</tg-spoiler>`, {
-        disable_web_page_preview: true,
-        parse_mode: 'HTML',
-        allow_sending_without_reply: true,
-        disable_notification: true,
-        reply_markup: sentPost.keyboard,
-      })
-    : Promise.reject(
-        new Error(`Unknown action when marking as spoiler following <sentPost>: ${JSON.stringify(sentPost)}`)
-      );
+      ? ctx.replyWithPhoto(sentPost.source, {
+          disable_web_page_preview: true,
+          parse_mode: 'HTML',
+          caption: `<tg-spoiler>${PrepareCaption(sentPost.caption)}</tg-spoiler>`,
+          has_spoiler: true,
+          allow_sending_without_reply: true,
+          disable_notification: true,
+          reply_markup: sentPost.keyboard,
+        })
+      : sentPost.type === 'video'
+        ? ctx.replyWithVideo(sentPost.source, {
+            disable_web_page_preview: true,
+            parse_mode: 'HTML',
+            caption: `<tg-spoiler>${PrepareCaption(sentPost.caption)}</tg-spoiler>`,
+            has_spoiler: true,
+            allow_sending_without_reply: true,
+            disable_notification: true,
+            reply_markup: sentPost.keyboard,
+          })
+        : sentPost.type === 'animation'
+          ? ctx.replyWithAnimation(sentPost.source, {
+              disable_web_page_preview: true,
+              parse_mode: 'HTML',
+              caption: `<tg-spoiler>${PrepareCaption(sentPost.caption)}</tg-spoiler>`,
+              has_spoiler: true,
+              allow_sending_without_reply: true,
+              disable_notification: true,
+              reply_markup: sentPost.keyboard,
+            })
+          : sentPost.type === 'text'
+            ? ctx.reply(`<tg-spoiler>${PrepareCaption(sentPost.source)}</tg-spoiler>`, {
+                disable_web_page_preview: true,
+                parse_mode: 'HTML',
+                allow_sending_without_reply: true,
+                disable_notification: true,
+                reply_markup: sentPost.keyboard,
+              })
+            : Promise.reject(
+                new Error(`Unknown action when marking as spoiler following <sentPost>: ${JSON.stringify(sentPost)}`)
+              );
 
   resendPromise
     .then(() =>
@@ -205,22 +205,22 @@ export const MarkSentPost = (messageToMark, senderId, canEdit = false) => {
       'photo' in messageToMark
         ? 'photo'
         : 'animation' in messageToMark
-        ? 'animation'
-        : 'video' in messageToMark
-        ? 'video'
-        : 'text' in messageToMark
-        ? 'text'
-        : '',
+          ? 'animation'
+          : 'video' in messageToMark
+            ? 'video'
+            : 'text' in messageToMark
+              ? 'text'
+              : '',
     source:
       'photo' in messageToMark
         ? messageToMark.photo?.pop()?.file_id
         : 'animation' in messageToMark
-        ? messageToMark.animation?.file_id
-        : 'video' in messageToMark
-        ? messageToMark.video?.file_id
-        : 'text' in messageToMark
-        ? messageToMark.text
-        : '',
+          ? messageToMark.animation?.file_id
+          : 'video' in messageToMark
+            ? messageToMark.video?.file_id
+            : 'text' in messageToMark
+              ? messageToMark.text
+              : '',
     caption: 'caption' in messageToMark ? messageToMark.caption : undefined,
     keyboard: 'reply_markup' in messageToMark ? messageToMark.reply_markup : undefined,
   };

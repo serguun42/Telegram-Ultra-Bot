@@ -77,8 +77,8 @@ const MakePost = (ctx, checkedLink, deleteSource = false) => {
         const inputFile = media.filename
           ? { source: media.filename instanceof Readable ? media.filename : createReadStream(media.filename) }
           : media.type === 'gif'
-          ? encodeURI(media.externalUrl || media.original)
-          : { url: encodeURI(media.externalUrl || media.original) };
+            ? encodeURI(media.externalUrl || media.original)
+            : { url: encodeURI(media.externalUrl || media.original) };
 
         /** @type {import("../types/telegraf").DefaultExtra} */
         const extra = {
@@ -123,8 +123,8 @@ const MakePost = (ctx, checkedLink, deleteSource = false) => {
           media.type === 'video'
             ? ctx.sendVideo(inputFile, extra)
             : media.type === 'gif'
-            ? ctx.sendAnimation(inputFile, extra)
-            : ctx.sendPhoto(inputFile, extra)
+              ? ctx.sendAnimation(inputFile, extra)
+              : ctx.sendPhoto(inputFile, extra)
         )
           .then((sentMessage) => {
             if (media.filename) VideoDone(media.filename);

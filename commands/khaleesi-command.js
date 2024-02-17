@@ -1,4 +1,4 @@
-import Khaleesi from 'khaleesi-js';
+import Khaleesi from '@serguun42/khaleesi-js';
 import LogMessageOrError from '../util/log.js';
 
 /**
