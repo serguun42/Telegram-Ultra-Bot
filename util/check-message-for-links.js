@@ -62,11 +62,10 @@ const CheckForLink = (givenURL) => {
   if (url.hostname === 'anime-pictures.net' || url.hostname === 'www.anime-pictures.net')
     return { status: true, platform: 'AnimePictures', url };
   if (
-    url.hostname === 'kemono.party' ||
     url.hostname === 'kemono.su' ||
     url.hostname === 'www.kemono.su' ||
-    url.hostname === 'www.kemono.party' ||
-    url.hostname === 'beta.kemono.party'
+    url.hostname === 'kemono.cr' ||
+    url.hostname === 'www.kemono.cr'
   )
     return { status: true, platform: 'Kemono', url };
   if (

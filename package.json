@@ -1,6 +1,6 @@
 {
   "name": "animeultrabot",
-  "version": "3.9.3",
+  "version": "3.9.4",
   "description": "Telegram bot based on Social-Picker-API. Includes features like replacing links to social posts in the group chat to media and managing the group and its content and messages.",
   "main": "animeultrabot.js",
   "type": "module",
